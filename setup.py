@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-#
 #
+# November 1 2015, Christian Hopps <chopps@gmail.com>
+#
 # Copyright (c) 2015, Deutsche Telekom AG.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,14 +27,14 @@ required = [
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-setup (name='wgdocs',
+setup (name='wgstatus',
        version='0.9.0',
-       description='wgdocs',
+       description='wgstatus',
        long_description=read("README.rst"),
        author='Christian E. Hopps',
        author_email='chopps@gmail.com',
        license='Apache License, Version 2.0',
        install_requires=required,
-       url='https://github.com/choppsv1/wgdocs',
-       entry_points={"console_scripts": [ "wgdocs = wgdocs.main:main"]},
-       packages=['wgdocs'])
+       url='https://github.com/choppsv1/wgstatus',
+       entry_points={"console_scripts": [ "wgstatus = wgstatus.main:main"]},
+       packages=['wgstatus'])

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-#
+#
 # November 1 2015, Christian Hopps <chopps@gmail.com>
 #
 # Copyright (c) 2015, Deutsche Telekom AG.
@@ -36,7 +37,7 @@ def parse_date (e):
 
 
 def get_orignal_date (url_name):
-    cachedir = "/tmp/wgdocs.cache"
+    cachedir = "/tmp/wgstatus.cache"
     if not os.path.exists(cachedir):
         os.system("mkdir -p " + cachedir)
     basename = url_name.split('/')[-2]
@@ -65,7 +66,7 @@ def print_doc_summary (doc):
 
 
 def main (*margs):
-    parser = argparse.ArgumentParser("wgdocs")
+    parser = argparse.ArgumentParser("wgstatus")
     # Should be non-optional arg.
     parser.add_argument('--wgname', help='wgname to scrape with')
     parser.add_argument('--last-meeting', help='Date (YYYY-MM-DD) of last IETF')
@@ -138,27 +139,27 @@ def main (*margs):
         else:
             updated.append(doc)
 
-    new_wgdocs = [ x for x in new if x[0].a.text.startswith('draft-ietf-isis') ]
-    updated_wgdocs = [ x for x in updated if x[0].a.text.startswith('draft-ietf-isis') ]
-    existing_wgdocs = [ x for x in existing if x[0].a.text.startswith('draft-ietf-isis') ]
-    new_ind = [ x for x in new if x not in new_wgdocs ]
-    updated_ind = [ x for x in updated if x not in updated_wgdocs ]
-    existing_ind = [ x for x in existing if x not in existing_wgdocs ]
+    new_wgstatus = [ x for x in new if x[0].a.text.startswith('draft-ietf-isis') ]
+    updated_wgstatus = [ x for x in updated if x[0].a.text.startswith('draft-ietf-isis') ]
+    existing_wgstatus = [ x for x in existing if x[0].a.text.startswith('draft-ietf-isis') ]
+    new_ind = [ x for x in new if x not in new_wgstatus ]
+    updated_ind = [ x for x in updated if x not in updated_wgstatus ]
+    existing_ind = [ x for x in existing if x not in existing_wgstatus ]
 
     print("\nNew RFCs")
     for doc in new_rfcs:
         print("{}: {}: {}".format(doc[1], doc[0].div.a.text, doc[0].div.b.text))
 
     print("\nNew WG-Docs")
-    for doc in new_wgdocs:
+    for doc in new_wgstatus:
         print_doc_summary(doc)
 
     print("\nUpdated WG-Docs")
-    for doc in updated_wgdocs:
+    for doc in updated_wgstatus:
         print_doc_summary(doc)
 
     print("\nExisting WG-Docss")
-    for doc in existing_wgdocs:
+    for doc in existing_wgstatus:
         print_doc_summary(doc)
 
     print("\nNew IDs")
