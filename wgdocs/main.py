@@ -17,6 +17,7 @@
 from __future__ import absolute_import, division, unicode_literals, print_function, nested_scopes
 import argparse
 import datetime
+import os
 import pdb
 import subprocess
 from bs4 import BeautifulSoup
@@ -34,6 +35,35 @@ def parse_date (e):
         return datetime.datetime.strptime(datestring, "%Y-%m")
 
 
+def get_orignal_date (url_name):
+    cachedir = "/tmp/wgdocs.cache"
+    if not os.path.exists(cachedir):
+        os.system("mkdir -p " + cachedir)
+    basename = url_name.split('/')[-2]
+    path = os.path.join(cachedir, basename)
+    if not os.path.exists(path):
+        print("Fetching original publication date of {}".format(url_name.split('/')[-2]))
+        cmd = "curl -s -o {} https://datatracker.ietf.org{}00/".format(path, url_name)
+        subprocess.check_output(cmd, shell=True)
+    output = open(path).read().encode("utf-8")
+    soup = BeautifulSoup(output, "lxml")
+    upds = soup.find_all("th")
+    for upd in upds:
+        if "Last updated" not in upd.text:
+            continue
+
+        tr = upd.parent
+        td = tr.find_all("td")
+        upd = td[1].text.strip().split()[0]
+        upd = datetime.datetime.strptime(upd, "%Y-%m-%d")
+        return upd
+    else:
+        assert False
+
+def print_doc_summary (doc):
+    print("{}: {}\t {}".format(doc[1], doc[0].div.a.text, doc[2]))
+
+
 def main (*margs):
     parser = argparse.ArgumentParser("wgdocs")
     # Should be non-optional arg.
@@ -48,7 +78,7 @@ def main (*margs):
         return
 
     if not args.use:
-        cmd = "curl -o - 'https://datatracker.ietf.org/doc/search/?name={}&sort=&rfcs=on&activedrafts=on'"
+        cmd = "curl -s -o - 'https://datatracker.ietf.org/doc/search/?name={}&sort=&rfcs=on&activedrafts=on'"
         cmd = cmd.format(args.wgname)
         output = subprocess.check_output(cmd, shell=True)
     else:
@@ -103,8 +133,9 @@ def main (*margs):
     for doc in new_or_updated:
         if doc[0].div.a.text.endswith('-00'):
             new.append(doc)
+        elif get_orignal_date(doc[0].div.a['href']) >= lastmeeting:
+            new.append(doc)
         else:
-            # XXX Check to see if version 00 was published before last meeting
             updated.append(doc)
 
     new_wgdocs = [ x for x in new if x[0].a.text.startswith('draft-ietf-isis') ]
@@ -120,27 +151,27 @@ def main (*margs):
 
     print("\nNew WG-Docs")
     for doc in new_wgdocs:
-        print("{}: {}".format(doc[1], doc[0].div.a.text))
+        print_doc_summary(doc)
 
     print("\nUpdated WG-Docs")
     for doc in updated_wgdocs:
-        print("{}: {}".format(doc[1], doc[0].div.a.text))
+        print_doc_summary(doc)
 
     print("\nExisting WG-Docss")
     for doc in existing_wgdocs:
-        print("{}: {}".format(doc[1], doc[0].div.a.text))
+        print_doc_summary(doc)
 
     print("\nNew IDs")
     for doc in new_ind:
-        print("{}: {}".format(doc[1], doc[0].div.a.text))
+        print_doc_summary(doc)
 
     print("\nUpdated IDs")
     for doc in updated_ind:
-        print("{}: {}".format(doc[1], doc[0].div.a.text))
+        print_doc_summary(doc)
 
     print("\nExisting IDs")
     for doc in existing_ind:
-        print("{}: {}".format(doc[1], doc[0].div.a.text))
+        print_doc_summary(doc)
 
     # pdb.set_trace()
 
