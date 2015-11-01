@@ -1,7 +1,8 @@
 
 wgstatus
-===========
+========
 
+Fetch document status for an IETF working group.
 
 master branch status:
 
