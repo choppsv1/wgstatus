@@ -47,8 +47,13 @@ def get_orignal_date (url_name):
         cmd = "curl -s -o {} https://datatracker.ietf.org{}00/".format(path, url_name)
         subprocess.check_output(cmd, shell=True)
     output = open(path).read().encode("utf-8")
+    if not output:
+        # Fake a date
+        return datetime.datetime.strptime("2010", "%Y")
     soup = BeautifulSoup(output, "lxml")
     upds = soup.find_all("th")
+    if not upds:
+        pdb.set_trace()
     for upd in upds:
         if "Last updated" not in upd.text:
             continue
@@ -60,6 +65,7 @@ def get_orignal_date (url_name):
         return upd
     else:
         assert False
+
 
 def print_doc_summary (doc):
     print("{}: {}\t {}".format(doc[1], doc[0].div.a.text, doc[2]))
@@ -139,9 +145,11 @@ def main (*margs):
         else:
             updated.append(doc)
 
-    new_wgstatus = [ x for x in new if x[0].a.text.startswith('draft-ietf-isis') ]
-    updated_wgstatus = [ x for x in updated if x[0].a.text.startswith('draft-ietf-isis') ]
-    existing_wgstatus = [ x for x in existing if x[0].a.text.startswith('draft-ietf-isis') ]
+    # wgdocpfx = "draft-ietf-{}".format(args.wgname)
+    wgdocpfx = "draft-ietf-"
+    new_wgstatus = [ x for x in new if x[0].a.text.startswith(wgdocpfx) ]
+    updated_wgstatus = [ x for x in updated if x[0].a.text.startswith(wgdocpfx) ]
+    existing_wgstatus = [ x for x in existing if x[0].a.text.startswith(wgdocpfx) ]
     new_ind = [ x for x in new if x not in new_wgstatus ]
     updated_ind = [ x for x in updated if x not in updated_wgstatus ]
     existing_ind = [ x for x in existing if x not in existing_wgstatus ]
