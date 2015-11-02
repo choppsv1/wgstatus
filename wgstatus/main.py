@@ -20,6 +20,7 @@ import argparse
 import datetime
 import os
 import pdb
+import re
 import subprocess
 from bs4 import BeautifulSoup
 
@@ -60,8 +61,12 @@ def get_orignal_date (url_name):
 
         tr = upd.parent
         td = tr.find_all("td")
-        upd = td[1].text.strip().split()[0]
-        upd = datetime.datetime.strptime(upd, "%Y-%m-%d")
+        match = re.search(r"latest revision (\d+-\d+-\d+)", td[1].text.strip())
+        if match:
+            upd = datetime.datetime.strptime(match.group(1), "%Y-%m-%d")
+        else:
+            upd = td[1].text.strip().split()[0]
+            upd = datetime.datetime.strptime(upd, "%Y-%m-%d")
         return upd
     else:
         assert False
@@ -140,10 +145,13 @@ def main (*margs):
     for doc in new_or_updated:
         if doc[0].div.a.text.endswith('-00'):
             new.append(doc)
-        elif get_orignal_date(doc[0].div.a['href']) >= lastmeeting:
-            new.append(doc)
         else:
-            updated.append(doc)
+            origdate = get_orignal_date(doc[0].div.a['href'])
+            if origdate >= lastmeeting:
+                # print("Original also published ({}) after last meeting ({})".format(origdate, lastmeeting))
+                new.append(doc)
+            else:
+                updated.append(doc)
 
     # wgdocpfx = "draft-ietf-{}".format(args.wgname)
     wgdocpfx = "draft-ietf-"
