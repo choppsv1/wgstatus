@@ -95,12 +95,12 @@ def print_doc_summary (args, doc):
 def main (*margs):
     parser = argparse.ArgumentParser("wgstatus")
     # Should be non-optional arg.
-    parser.add_argument('--wgname', help='wgname to scrape with')
-    parser.add_argument('--last-meeting', help='Date (YYYY-MM-DD) of last IETF')
+    parser.add_argument('--last-meeting', required=True, help='Date (YYYY-MM-DD) of last IETF')
     parser.add_argument('--include-date', action="store_true", help='Include date in summary')
     parser.add_argument('--include-status', action="store_true", help='Include status in summary')
     parser.add_argument('--org-mode', action="store_true", help='Output org mode friendly slides')
     parser.add_argument('--use', help='file to use')
+    parser.add_argument('wgname', nargs='?', default='isis', help='Working group name')
     args = parser.parse_args(*margs)
 
     lastmeeting = datetime.datetime.strptime(args.last_meeting, "%Y-%m-%d")
