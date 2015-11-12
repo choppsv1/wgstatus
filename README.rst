@@ -29,7 +29,7 @@ Usage
 Example
 -------
 
-.. code-block:: sh
+::
     $ wgstatus --last-meeting=2015-07-31 --org-mode isis
 
     ** Document Status
