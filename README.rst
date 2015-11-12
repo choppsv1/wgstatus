@@ -23,8 +23,7 @@ Usage
       --include-date        Include date in summary
       --include-status      Include status in summary
       --org-mode            Output org mode friendly slides
-      --use USE             file to use    usage: wgstatus [-h] [--wgname WGNAME] [--last-meeting LAST_MEETING]
-                        [--include-date] [--include-status] [--org-mode] [--use USE]
+      --use USE             file to use
 
 Example
 -------
