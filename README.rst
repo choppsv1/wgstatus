@@ -9,18 +9,22 @@ Usage
 
 .. code-block:: sh
 
-    usage: wgstatus [-h] [--wgname WGNAME] [--last-meeting LAST_MEETING]
-                    [--include-date] [--include-status] [--org-mode] [--use USE]
+    usage: wgstatus [-h] --last-meeting LAST_MEETING [--include-date]
+                    [--include-status] [--org-mode] [--use USE]
+                    [wgname]
+
+    positional arguments:
+      wgname                Working group name
 
     optional arguments:
       -h, --help            show this help message and exit
-      --wgname WGNAME       wgname to scrape with
       --last-meeting LAST_MEETING
                             Date (YYYY-MM-DD) of last IETF
       --include-date        Include date in summary
       --include-status      Include status in summary
       --org-mode            Output org mode friendly slides
-      --use USE             file to use
+      --use USE             file to use    usage: wgstatus [-h] [--wgname WGNAME] [--last-meeting LAST_MEETING]
+                        [--include-date] [--include-status] [--org-mode] [--use USE]
 
 Example
 -------
