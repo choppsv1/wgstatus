@@ -72,8 +72,24 @@ def get_orignal_date (url_name):
         assert False
 
 
-def print_doc_summary (doc):
-    print("{}: {}\t {}".format(doc[1], doc[0].div.a.text, doc[2]))
+def print_doc_summary (args, doc):
+    if args.org_mode:
+        name = doc[0].div.a.text.strip()
+        if name.startswith("RFC"):
+            fmt = """ - {name}
+   - {title}"""
+        else:
+            fmt = " - {name}"
+    else:
+        fmt = ""
+        if args.include_date:
+            fmt += "{date}: "
+        fmt += "{name}"
+        if args.include_status:
+            fmt += "\t{status}"
+
+    fmt = fmt.format(date=doc[1], title=doc[0].div.b.text.strip(), name=doc[0].div.a.text, status=doc[2])
+    print(fmt)
 
 
 def main (*margs):
@@ -81,6 +97,9 @@ def main (*margs):
     # Should be non-optional arg.
     parser.add_argument('--wgname', help='wgname to scrape with')
     parser.add_argument('--last-meeting', help='Date (YYYY-MM-DD) of last IETF')
+    parser.add_argument('--include-date', action="store_true", help='Include date in summary')
+    parser.add_argument('--include-status', action="store_true", help='Include status in summary')
+    parser.add_argument('--org-mode', action="store_true", help='Output org mode friendly slides')
     parser.add_argument('--use', help='file to use')
     args = parser.parse_args(*margs)
 
@@ -162,35 +181,42 @@ def main (*margs):
     updated_ind = [ x for x in updated if x not in updated_wgstatus ]
     existing_ind = [ x for x in existing if x not in existing_wgstatus ]
 
-    print("\nNew RFCs")
-    for doc in new_rfcs:
-        print("{}: {}: {}".format(doc[1], doc[0].div.a.text, doc[0].div.b.text))
+    print("\n** Document Status")
 
-    print("\nNew WG-Docs")
-    for doc in new_wgstatus:
-        print_doc_summary(doc)
+    if new_rfcs:
+        print("\n*** New RFCs")
+        for doc in new_rfcs:
+            print_doc_summary(args, doc)
 
-    print("\nUpdated WG-Docs")
-    for doc in updated_wgstatus:
-        print_doc_summary(doc)
+    if new_wgstatus:
+        print("\n*** New WG-Docs")
+        for doc in new_wgstatus:
+            print_doc_summary(args, doc)
 
-    print("\nExisting WG-Docss")
-    for doc in existing_wgstatus:
-        print_doc_summary(doc)
+    if updated_wgstatus:
+        print("\n*** Updated WG-Docs")
+        for doc in updated_wgstatus:
+            print_doc_summary(args, doc)
 
-    print("\nNew IDs")
-    for doc in new_ind:
-        print_doc_summary(doc)
+    if existing_wgstatus:
+        print("\n*** Existing WG-Docss")
+        for doc in existing_wgstatus:
+            print_doc_summary(args, doc)
 
-    print("\nUpdated IDs")
-    for doc in updated_ind:
-        print_doc_summary(doc)
+    if new_ind:
+        print("\n*** New IDs")
+        for doc in new_ind:
+            print_doc_summary(args, doc)
 
-    print("\nExisting IDs")
-    for doc in existing_ind:
-        print_doc_summary(doc)
+    if updated_ind:
+        print("\n*** Updated IDs")
+        for doc in updated_ind:
+            print_doc_summary(args, doc)
 
-    # pdb.set_trace()
+    if existing_ind:
+        print("\n*** Existing IDs")
+        for doc in existing_ind:
+            print_doc_summary(args, doc)
 
 
 if __name__ == "__main__":
