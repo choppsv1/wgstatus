@@ -29,7 +29,8 @@ Usage
 Example
 -------
 
-::
+Here's an exmaple for IS-IS WG since Mid-2015 meeting output in org mode format::
+
     $ wgstatus --last-meeting=2015-07-31 --org-mode isis
 
     ** Document Status

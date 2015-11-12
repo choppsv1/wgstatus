@@ -199,7 +199,7 @@ def main (*margs):
             print_doc_summary(args, doc)
 
     if existing_wgstatus:
-        print("\n*** Existing WG-Docss")
+        print("\n*** Existing WG-Docs")
         for doc in existing_wgstatus:
             print_doc_summary(args, doc)
 
