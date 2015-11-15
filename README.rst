@@ -47,7 +47,7 @@ Here's an exmaple for IS-IS WG since Mid-2015 meeting output in org mode format:
      - draft-ietf-isis-mpls-elc-01
      - draft-ietf-isis-node-admin-tag-05
 
-    *** Existing WG-Docss
+    *** Existing WG-Docs
      - draft-ietf-isis-sbfd-discriminator-02
      - draft-ietf-isis-te-metric-extensions-07
      - draft-ietf-isis-prefix-attributes-01
