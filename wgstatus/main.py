@@ -220,7 +220,7 @@ def main (*margs):
 
 
 if __name__ == "__main__":
-    main(["--wgname", "isis"])
+    main()
 
 __author__ = 'Christian Hopps'
 __date__ = 'November 1 2015'
