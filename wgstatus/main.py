@@ -21,6 +21,7 @@ import datetime
 import os
 import pdb
 import re
+import sys
 import subprocess
 from bs4 import BeautifulSoup
 
@@ -220,7 +221,7 @@ def main (*margs):
 
 
 if __name__ == "__main__":
-    main(["--wgname", "isis"])
+    main(sys.argv[1:])
 
 __author__ = 'Christian Hopps'
 __date__ = 'November 1 2015'
