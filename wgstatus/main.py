@@ -47,8 +47,10 @@ def get_orignal_date (url_name):
         print("Fetching original publication date of {}".format(url_name.split('/')[-2]))
         cmd = "curl -s -o {} https://datatracker.ietf.org{}00/".format(path, url_name)
         subprocess.check_output(cmd, shell=True)
-    output = open(path).read().encode("utf-8")
-    if not output:
+    try:
+        output = open(path).read().encode("utf-8")
+        assert output
+    except (IOError, AssertionError):
         # Fake a date
         return datetime.datetime.strptime("2010", "%Y")
     soup = BeautifulSoup(output, "lxml")
@@ -73,8 +75,8 @@ def get_orignal_date (url_name):
 
 
 def print_doc_summary (args, doc):
+    name = doc[0].div.a.text.strip()
     if args.org_mode:
-        name = doc[0].div.a.text.strip()
         if name.startswith("RFC"):
             fmt = """ - {name}
    - {title}"""
@@ -84,11 +86,14 @@ def print_doc_summary (args, doc):
         fmt = ""
         if args.include_date:
             fmt += "{date}: "
-        fmt += "{name}"
+        if name.startswith("RFC"):
+            fmt += "{name} - {title}"
+        else:
+            fmt += "{name}"
         if args.include_status:
             fmt += "\t{status}"
 
-    fmt = fmt.format(date=doc[1], title=doc[0].div.b.text.strip(), name=doc[0].div.a.text, status=doc[2])
+    fmt = fmt.format(date=doc[1], title=doc[0].div.b.text.strip(), name=name, status=doc[2])
     print(fmt)
 
 
@@ -109,7 +114,7 @@ def main (*margs):
         return
 
     if not args.use:
-        cmd = "curl -s -o - 'https://datatracker.ietf.org/doc/search/?name={}&sort=&rfcs=on&activedrafts=on'"
+        cmd = "curl -s -o - 'https://datatracker.ietf.org/doc/search/?name=-{}-&sort=&rfcs=on&activedrafts=on'"
         cmd = cmd.format(args.wgname)
         output = subprocess.check_output(cmd, shell=True)
     else:
