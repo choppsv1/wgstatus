@@ -22,8 +22,10 @@ import os
 import pdb
 import re
 import subprocess
+import sys
 from bs4 import BeautifulSoup
 
+ORG_LEVEL_OFF = 1
 
 def split_nempty (s):
     return [ x.strip() for x in s.split('\n') if x.strip() ]
@@ -37,26 +39,78 @@ def parse_date (e):
         return datetime.datetime.strptime(datestring, "%Y-%m")
 
 
-def get_orignal_date (url_name):
+def get_url_with_cache (url, basename):
     cachedir = "/tmp/wgstatus.cache"
     if not os.path.exists(cachedir):
         os.system("mkdir -p " + cachedir)
-    basename = url_name.split('/')[-2]
+
     path = os.path.join(cachedir, basename)
     if not os.path.exists(path):
-        print("Fetching original publication date of {}".format(url_name.split('/')[-2]))
-        cmd = "curl -s -o {} https://datatracker.ietf.org{}00/".format(path, url_name)
+        print("Fetching {} into cache".format(basename))
+        cmd = "curl -s -o {} {}".format(path, url)
         subprocess.check_output(cmd, shell=True)
+    return open(path).read().encode("utf-8")
+
+
+def get_meeting_info ():
+    url = "http://www.ietf.org/meeting/past.html"
+    output = get_url_with_cache(url, "past.html")
+
+    soup = BeautifulSoup(output, "lxml")
+    meetings = soup.find_all("h3")
+    if not meetings:
+        raise ValueError("No meeting info found in {}".format(url))
+
+    meeting_info = {}
+    for meeting in meetings:
+        if "IETF" not in meeting.text:
+            continue
+
+        match = re.search(r"(\d+)(st|nd|rd|th) IETF", meeting.text)
+        if not match:
+            continue
+
+        meeting_number = int(match.group(1))
+        for sib in meeting.next_siblings:
+            # Make sure we don't get to the next heading.
+            if "IETF" in sib:
+                raise ValueError("No meeting date found for {}".format(meeting_number))
+
+            in_month_re = r"(([A-Z][a-z]+) (\d+)-(\d+), (\d{4}))"
+            x_month_re = r"(([A-Z][a-z]+) (\d+)-([A-Z][a-z]+) (\d+), (\d{4}))"
+            match = re.search(r"{}|{}".format(in_month_re, x_month_re), str(sib))
+            if match:
+                groups = match.groups()
+                if groups[0]:
+                    # Date range in same month
+                    date = "{} {} {}".format(groups[1], groups[3], groups[4])
+                else:
+                    # Date range crosses months
+                    assert groups[5]
+                    date = "{} {} {}".format(groups[8], groups[9], groups[10])
+                date = datetime.datetime.strptime(date, "%B %d %Y")
+                meeting_info[meeting_number] = date
+                break
+        else:
+            raise ValueError("No date found for meeting {}".format(meeting_number))
+    return meeting_info
+
+
+def get_orignal_date (url_name):
+    url = "https://datatracker.ietf.org{}00/".format(url_name)
+    cachename = url_name.split('/')[-2] + "-00"
     try:
-        output = open(path).read().encode("utf-8")
+        output = get_url_with_cache(url, cachename)
         assert output
     except (IOError, AssertionError):
         # Fake a date
         return datetime.datetime.strptime("2010", "%Y")
+
     soup = BeautifulSoup(output, "lxml")
     upds = soup.find_all("th")
     if not upds:
         pdb.set_trace()
+
     for upd in upds:
         if "Last updated" not in upd.text:
             continue
@@ -74,24 +128,30 @@ def get_orignal_date (url_name):
         assert False
 
 
-def print_doc_summary (args, doc):
-    name = doc[0].div.a.text.strip()
+def print_headline (args, headline, level):
+    hline = ""
     if args.org_mode:
-        if name.startswith("RFC"):
-            fmt = """ - {name}
-   - {title}"""
-        else:
-            fmt = " - {name}"
+        hline = "\n" + "*" * (level + ORG_LEVEL_OFF)
+    else:
+        hline = "\n" + "#" * level
+    hline += " " + headline
+    print(hline)
+
+
+def print_doc_summary (args, doc, longest):
+    name = doc[0].div.a.text.strip()
+    if args.org_mode or not (args.include_date or args.include_status):
+        fmt = " - "
     else:
         fmt = ""
-        if args.include_date:
-            fmt += "{date}: "
-        if name.startswith("RFC"):
-            fmt += "{name} - {title}"
-        else:
-            fmt += "{name}"
-        if args.include_status:
-            fmt += "\t{status}"
+    if args.include_date:
+        fmt += "{date}: "
+    if name.startswith("RFC"):
+        fmt += "{name} - {title}"
+    else:
+        fmt += "{name}"
+    if args.include_status:
+        fmt += " " * (longest - len(name) + 1) + "{status}"
 
     fmt = fmt.format(date=doc[1], title=doc[0].div.b.text.strip(), name=name, status=doc[2])
     print(fmt)
@@ -100,18 +160,29 @@ def print_doc_summary (args, doc):
 def main (*margs):
     parser = argparse.ArgumentParser("wgstatus")
     # Should be non-optional arg.
-    parser.add_argument('--last-meeting', required=True, help='Date (YYYY-MM-DD) of last IETF')
+    parser.add_argument('--last-meeting', help='Meeting number or Date (YYYY-MM-DD) of last IETF')
+    parser.add_argument('--exclude-existing', action="store_true", help='Exclude unchanged docs in summary')
     parser.add_argument('--include-date', action="store_true", help='Include date in summary')
     parser.add_argument('--include-status', action="store_true", help='Include status in summary')
     parser.add_argument('--org-mode', action="store_true", help='Output org mode friendly slides')
-    parser.add_argument('--use', help='file to use')
-    parser.add_argument('wgname', nargs='?', default='isis', help='Working group name')
+    parser.add_argument('--use', help=argparse.SUPPRESS)
+    parser.add_argument('wgname', nargs='?', help='Working group name')
     args = parser.parse_args(*margs)
 
-    lastmeeting = datetime.datetime.strptime(args.last_meeting, "%Y-%m-%d")
+    if not args.last_meeting:
+        meeting_info = get_meeting_info()
+        lastidx = sorted(meeting_info.keys())[-1]
+        lastmeeting = meeting_info[lastidx]
+    else:
+        try:
+            lastmeeting = datetime.datetime.strptime(args.last_meeting, "%Y-%m-%d")
+        except:
+            meeting_info = get_meeting_info()
+            lastmeeting = meeting_info[int(args.last_meeting)]
 
     if not args.wgname and not args.use:
-        return
+        print("Need to specify a WG name (use -h for help)")
+        sys.exit(1)
 
     if not args.use:
         cmd = "curl -s -o - 'https://datatracker.ietf.org/doc/search/?name=-{}-&sort=&rfcs=on&activedrafts=on'"
@@ -186,42 +257,44 @@ def main (*margs):
     updated_ind = [ x for x in updated if x not in updated_wgstatus ]
     existing_ind = [ x for x in existing if x not in existing_wgstatus ]
 
-    print("\n** Document Status")
+    print_headline(args, "Document Status Since {}".format(lastmeeting), 1)
+
+    longest = reduce(max, [ len(x[0].div.a.text.strip()) for x in drafts ], 0)
 
     if new_rfcs:
-        print("\n*** New RFCs")
+        print_headline(args, "New RFCs", 2)
         for doc in new_rfcs:
-            print_doc_summary(args, doc)
+            print_doc_summary(args, doc, longest)
 
     if new_wgstatus:
-        print("\n*** New WG-Docs")
+        print_headline(args, "New WG-Docs", 2)
         for doc in new_wgstatus:
-            print_doc_summary(args, doc)
+            print_doc_summary(args, doc, longest)
 
     if updated_wgstatus:
-        print("\n*** Updated WG-Docs")
+        print_headline(args, "Updated WG-Docs", 2)
         for doc in updated_wgstatus:
-            print_doc_summary(args, doc)
+            print_doc_summary(args, doc, longest)
 
-    if existing_wgstatus:
-        print("\n*** Existing WG-Docs")
+    if existing_wgstatus and not args.exclude_existing:
+        print_headline(args, "Existing WG-Docs", 2)
         for doc in existing_wgstatus:
-            print_doc_summary(args, doc)
+            print_doc_summary(args, doc, longest)
 
     if new_ind:
-        print("\n*** New IDs")
+        print_headline(args, "New IDs", 2)
         for doc in new_ind:
-            print_doc_summary(args, doc)
+            print_doc_summary(args, doc, longest)
 
     if updated_ind:
-        print("\n*** Updated IDs")
+        print_headline(args, "Updated IDs", 2)
         for doc in updated_ind:
-            print_doc_summary(args, doc)
+            print_doc_summary(args, doc, longest)
 
-    if existing_ind:
-        print("\n*** Existing IDs")
+    if existing_ind and not args.exclude_existing:
+        print_headline(args, "Existing IDs", 2)
         for doc in existing_ind:
-            print_doc_summary(args, doc)
+            print_doc_summary(args, doc, longest)
 
 
 if __name__ == "__main__":
