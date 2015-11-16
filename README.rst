@@ -12,6 +12,12 @@ To install from PyPi:
 
 .. code-block:: sh
 
+    pip install wgstatus
+
+To install a new version from PyPi:
+
+.. code-block:: sh
+
     pip install --upgrade wgstatus
 
 To install and run from a git repostiory (links into):
