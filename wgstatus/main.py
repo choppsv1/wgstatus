@@ -191,22 +191,26 @@ def main (*margs):
     else:
         output = open(args.use).read().decode("utf-8")
     soup = BeautifulSoup(output, "lxml")
+
     # <table class="table table-condensed table-striped">
-    table = soup.find('table', {'class': 'table table-condensed table-striped'})
+    table = soup.find('table', {'class': 'table table-condensed table-striped tablesorter'})
     head = table.find("thead")
-    body = table.find("tbody")
+    # body = table.find("tbody")
 
     # Get the column information
     # To extract href for sorting on column 1
     # table.find("thead").find("tr").find_all("th")[1].find('a').attrs
     header_elms = table.find("thead").find("tr").find_all("th")
-    header_names = [ x.attrs['class'][0] if 'class' in x.attrs else '' for x in header_elms ]
+    header_names = [ x.attrs['data-header'] if 'data-header' in x.attrs else '' for x in header_elms ]
     date_idx = header_names.index("date")
     name_idx = header_names.index("document")
     status_idx = header_names.index("status")
 
     # Get the data
-    docs = [x for x in table.find("tbody").find_all("tr") if x.find("td", "doc")]
+    # index 0 "Active IDs" index 1 actual docs, index 2 "RFCs", index 3 actual docs
+    all_tbody = table.find_all("tbody")
+    all_trs = all_tbody[1].find_all("tr") + all_tbody[3].find_all("tr")
+    docs = [x for x in all_trs if x.find("td", "doc")]
     docs = [ x.find_all("td") for x in docs ]
     docs = [ (x[name_idx], parse_date(x[date_idx]), split_nempty(x[status_idx].text)) for x in docs ]
 
