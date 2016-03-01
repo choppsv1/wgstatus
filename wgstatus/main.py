@@ -39,6 +39,13 @@ def parse_date (e):
         return datetime.datetime.strptime(datestring, "%Y-%m")
 
 
+def get_shepherd (e):
+    "Get the shepherd "
+    shep = e.find("a", title="Shepherd")
+    if shep:
+        return shep.text
+    return ""
+
 def get_url_with_cache (url, basename):
     cachedir = "/tmp/wgstatus.cache"
     if not os.path.exists(cachedir):
@@ -138,8 +145,9 @@ def print_headline (args, headline, level):
     print(hline)
 
 
-def print_doc_summary (args, doc, longest):
+def print_doc_summary (args, doc, longest, longest_shep):
     name = doc[0].div.a.text.strip()
+    shep = doc[3]
     if args.org_mode or not (args.include_date or args.include_status):
         fmt = " - "
     else:
@@ -150,10 +158,17 @@ def print_doc_summary (args, doc, longest):
         fmt += "{name} - {title}"
     else:
         fmt += "{name}"
+    if args.include_shepherd and shep:
+        fmt += " " * (longest - len(name)) + " {shepherd}"
     if args.include_status:
-        fmt += " " * (longest - len(name) + 1) + "{status}"
+        if not args.include_shepherd or not shep:
+            fmt += " " * (longest - len(name))
+        else:
+            fmt += " " * (longest_shep - len(shep))
+        fmt += " {status}"
 
-    fmt = fmt.format(date=doc[1], title=doc[0].div.b.text.strip(), name=name, status=doc[2])
+    fmt = fmt.format(date=doc[1], title=doc[0].div.b.text.strip(), name=name, status=doc[2],
+                     shepherd=shep)
     print(fmt)
 
 
@@ -163,6 +178,7 @@ def main (*margs):
     parser.add_argument('--last-meeting', help='Meeting number or Date (YYYY-MM-DD) of last IETF')
     parser.add_argument('--exclude-existing', action="store_true", help='Exclude unchanged docs in summary')
     parser.add_argument('--include-date', action="store_true", help='Include date in summary')
+    parser.add_argument('--include-shepherd', action="store_true", help='Include shepherd in summary')
     parser.add_argument('--include-status', action="store_true", help='Include status in summary')
     parser.add_argument('--org-mode', action="store_true", help='Output org mode friendly slides')
     parser.add_argument('--use', help=argparse.SUPPRESS)
@@ -205,6 +221,8 @@ def main (*margs):
     date_idx = header_names.index("date")
     name_idx = header_names.index("document")
     status_idx = header_names.index("status")
+    ipr_idx = header_names.index("ipr")
+    shep_idx = header_names.index("ad")
 
     # Get the data
     # index 0 "Active IDs" index 1 actual docs, index 2 "RFCs", index 3 actual docs
@@ -212,7 +230,11 @@ def main (*margs):
     all_trs = all_tbody[1].find_all("tr") + all_tbody[3].find_all("tr")
     docs = [x for x in all_trs if x.find("td", "doc")]
     docs = [ x.find_all("td") for x in docs ]
-    docs = [ (x[name_idx], parse_date(x[date_idx]), split_nempty(x[status_idx].text)) for x in docs ]
+    docs = [ (x[name_idx],
+              parse_date(x[date_idx]),
+              split_nempty(x[status_idx].text),
+              get_shepherd(x[shep_idx])
+    ) for x in docs ]
 
     # docs[x][0].div.a.text is the draft name with version
     # docs[x][0].div.a['href'] is the relative url of the doc
@@ -264,41 +286,42 @@ def main (*margs):
     print_headline(args, "Document Status Since {}".format(lastmeeting), 1)
 
     longest = reduce(max, [ len(x[0].div.a.text.strip()) for x in drafts ], 0)
+    longest_shep = reduce(max, [ len(x[3]) for x in drafts ], 0)
 
     if new_rfcs:
         print_headline(args, "New RFCs", 2)
         for doc in new_rfcs:
-            print_doc_summary(args, doc, longest)
+            print_doc_summary(args, doc, longest, longest_shep)
 
     if new_wgstatus:
         print_headline(args, "New WG-Docs", 2)
         for doc in new_wgstatus:
-            print_doc_summary(args, doc, longest)
+            print_doc_summary(args, doc, longest, longest_shep)
 
     if updated_wgstatus:
         print_headline(args, "Updated WG-Docs", 2)
         for doc in updated_wgstatus:
-            print_doc_summary(args, doc, longest)
+            print_doc_summary(args, doc, longest, longest_shep)
 
     if existing_wgstatus and not args.exclude_existing:
         print_headline(args, "Existing WG-Docs", 2)
         for doc in existing_wgstatus:
-            print_doc_summary(args, doc, longest)
+            print_doc_summary(args, doc, longest, longest_shep)
 
     if new_ind:
         print_headline(args, "New IDs", 2)
         for doc in new_ind:
-            print_doc_summary(args, doc, longest)
+            print_doc_summary(args, doc, longest, longest_shep)
 
     if updated_ind:
         print_headline(args, "Updated IDs", 2)
         for doc in updated_ind:
-            print_doc_summary(args, doc, longest)
+            print_doc_summary(args, doc, longest, longest_shep)
 
     if existing_ind and not args.exclude_existing:
         print_headline(args, "Existing IDs", 2)
         for doc in existing_ind:
-            print_doc_summary(args, doc, longest)
+            print_doc_summary(args, doc, longest, longest_shep)
 
 
 if __name__ == "__main__":
