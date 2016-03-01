@@ -39,11 +39,19 @@ def parse_date (e):
         return datetime.datetime.strptime(datestring, "%Y-%m")
 
 
-def get_shepherd (e):
+def get_shepherd (x):
     "Get the shepherd "
-    shep = e.find("a", title="Shepherd")
+    ad = [e for e in x if "class" in e.attrs and e.attrs["class"][0] == "ad"]
+    if not ad:
+        return ""
+    ad = ad[0]
+    shep = ad.find_all("a")
+    if len(shep) == 1:
+        #return shep[0].text.split()[-1]
+        return "[{}]".format(shep[0].text)
     if shep:
-        return shep.text
+        #return ", ".join(reversed([x.text.split()[-1] for x in shep]))
+        return "[{}]".format(", ".join(reversed([x.text for x in shep])))
     return ""
 
 def get_url_with_cache (url, basename):
@@ -158,10 +166,11 @@ def print_doc_summary (args, doc, longest, longest_shep):
         fmt += "{name} - {title}"
     else:
         fmt += "{name}"
-    if args.include_shepherd and shep:
+    if args.include_shepherd:
+        fmt += " "
         fmt += " " * (longest - len(name)) + " {shepherd}"
     if args.include_status:
-        if not args.include_shepherd or not shep:
+        if not args.include_shepherd:
             fmt += " " * (longest - len(name))
         else:
             fmt += " " * (longest_shep - len(shep))
@@ -227,13 +236,15 @@ def main (*margs):
     # Get the data
     # index 0 "Active IDs" index 1 actual docs, index 2 "RFCs", index 3 actual docs
     all_tbody = table.find_all("tbody")
-    all_trs = all_tbody[1].find_all("tr") + all_tbody[3].find_all("tr")
+    all_trs = all_tbody[1].find_all("tr")
+    if len(all_tbody) > 3:
+        all_trs += all_tbody[3].find_all("tr")
     docs = [x for x in all_trs if x.find("td", "doc")]
     docs = [ x.find_all("td") for x in docs ]
     docs = [ (x[name_idx],
               parse_date(x[date_idx]),
               split_nempty(x[status_idx].text),
-              get_shepherd(x[shep_idx])
+              get_shepherd(x)
     ) for x in docs ]
 
     # docs[x][0].div.a.text is the draft name with version
@@ -285,41 +296,50 @@ def main (*margs):
 
     print_headline(args, "Document Status Since {}".format(lastmeeting), 1)
 
-    longest = reduce(max, [ len(x[0].div.a.text.strip()) for x in drafts ], 0)
-    longest_shep = reduce(max, [ len(x[3]) for x in drafts ], 0)
+    def get_longest (docs):
+        longest = reduce(max, [ len(x[0].div.a.text.strip()) for x in docs ], 0)
+        longest_shep = reduce(max, [ len(x[3]) for x in docs ], 0)
+        return longest, longest_shep
 
     if new_rfcs:
         print_headline(args, "New RFCs", 2)
+        longest, longest_shep = get_longest(new_rfcs)
         for doc in new_rfcs:
             print_doc_summary(args, doc, longest, longest_shep)
 
     if new_wgstatus:
         print_headline(args, "New WG-Docs", 2)
+        longest, longest_shep = get_longest(new_wgstatus)
         for doc in new_wgstatus:
             print_doc_summary(args, doc, longest, longest_shep)
 
     if updated_wgstatus:
         print_headline(args, "Updated WG-Docs", 2)
+        longest, longest_shep = get_longest(updated_wgstatus)
         for doc in updated_wgstatus:
             print_doc_summary(args, doc, longest, longest_shep)
 
     if existing_wgstatus and not args.exclude_existing:
         print_headline(args, "Existing WG-Docs", 2)
+        longest, longest_shep = get_longest(existing_wgstatus)
         for doc in existing_wgstatus:
             print_doc_summary(args, doc, longest, longest_shep)
 
     if new_ind:
         print_headline(args, "New IDs", 2)
+        longest, longest_shep = get_longest(new_ind)
         for doc in new_ind:
             print_doc_summary(args, doc, longest, longest_shep)
 
     if updated_ind:
         print_headline(args, "Updated IDs", 2)
+        longest, longest_shep = get_longest(updated_ind)
         for doc in updated_ind:
             print_doc_summary(args, doc, longest, longest_shep)
 
     if existing_ind and not args.exclude_existing:
         print_headline(args, "Existing IDs", 2)
+        longest, longest_shep = get_longest(existing_ind)
         for doc in existing_ind:
             print_doc_summary(args, doc, longest, longest_shep)
 

@@ -1,0 +1,117 @@
+# -*-org-confirm-babel-evaluate: nil -*-
+#+TITLE: Working Group Status Tool
+#+AUTHOR: Christian E. Hopps <chopps@chopps.org>
+#+EMAIL: chopps@chopps.org
+#+STARTUP: beamer content entitiespretty
+#+OPTIONS: h:2 toc:nil \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t ':t
+#+BEAMER_THEME: m [everytitleformat=regular]
+
+* Working Group Status Tool
+** Working Group Status Tool
+   - Get list of documents
+     - Since last meeting or date.
+     - Can exclude unchanged
+   - Optional Output
+     - Date
+     - Status
+     - Shepherd
+** Simple Example
+   \tiny
+   #+begin_src sh
+     $ wgstatus isis
+
+     # Document Status Since 2015-11-06 00:00:00
+
+     ## New RFCs
+      - RFC 7775 - IS-IS Route Preference for Extended IP and IPv6 Reachability
+
+     ## New WG-Docs
+      - draft-ietf-isis-auto-conf-00
+      - draft-ietf-isis-remaining-lifetime-00
+      - draft-ietf-isis-rfc4971bis-00
+      - draft-ietf-isis-l2bundles-01
+
+     ## Updated WG-Docs
+      - draft-ietf-isis-mpls-elc-01
+      - draft-ietf-isis-yang-isis-cfg-07
+      - draft-ietf-isis-node-admin-tag-08
+      - draft-ietf-isis-segment-routing-extensions-06
+      - draft-ietf-isis-prefix-attributes-04
+      - draft-ietf-isis-pcr-05
+      - draft-ietf-isis-te-metric-extensions-11
+
+     ## Existing WG-Docs
+       - draft-anggawijaya-pim-resilient-gmp-01
+     ...
+   #+end_src
+** w/status
+   \tiny
+   #+begin_src sh
+     $ wgstatus --include-status isis
+
+     # Document Status Since 2015-11-06 00:00:00
+
+     ## New RFCs
+     RFC 7775 - IS-IS Route Preference for Extended IP and IPv6 Reachability [u'Proposed Standard RFC']
+
+     ## New WG-Docs
+     draft-ietf-isis-auto-conf-00          [u'I-D Exists', u'WG Document:', u'Proposed Standard']
+     draft-ietf-isis-remaining-lifetime-00 [u'I-D Exists', u'WG Document:', u'Proposed Standard']
+     draft-ietf-isis-rfc4971bis-00         [u'I-D Exists', u'WG Document:', u'Proposed Standard']
+     draft-ietf-isis-l2bundles-01          [u'I-D Exists', u'WG Document:', u'Proposed Standard']
+
+     ## Updated WG-Docs
+     draft-ietf-isis-mpls-elc-01                   [u'I-D Exists', u'WG Document:', u'Proposed Standard']
+     draft-ietf-isis-yang-isis-cfg-07              [u'I-D Exists', u'WG Document:', u'Proposed Standard']
+     draft-ietf-isis-node-admin-tag-08             [u'Publication Requested', u'for 6 days', u'Submitted to IESG for Publication:', u'Proposed Standard']
+     draft-ietf-isis-segment-routing-extensions-06 [u'I-D Exists', u'WG Document:', u'Proposed Standard']
+     draft-ietf-isis-prefix-attributes-04          [u'RFC Ed Queue', u': AUTH48', u'for 50 days', u'Submitted to IESG for Publication:', u'Proposed Standard']
+     draft-ietf-isis-pcr-05                        [u'RFC Ed Queue', u': EDIT', u'for 18 days', u'Submitted to IESG for Publication:', u'Proposed Standard']
+     draft-ietf-isis-te-metric-extensions-11       [u'RFC Ed Queue', u': EDIT', u'for 5 days', u'Submitted to IESG for Publication:', u'Proposed Standard']
+
+     ## Existing WG-Docs
+     draft-ietf-isis-sbfd-discriminator-02 [u'IESG Evaluation::AD Followup', u'for 103 days', u'Submitted to IESG for Publication:', u'Proposed Standard']
+     draft-ietf-bier-isis-extensions-01    [u'I-D Exists', u'WG Document']
+     ...
+   #+end_src
+** w/shepherd
+   \tiny
+   #+begin_src sh
+     $ wgstatus --include-shep isis
+
+     # Document Status Since 2015-11-06 00:00:00
+
+     ## New RFCs
+      - RFC 7775 - IS-IS Route Preference for Extended IP and IPv6 Reachability  [Christian Hopps, Alia Atlas]
+
+     ## New WG-Docs
+      - draft-ietf-isis-auto-conf-00           [Hannes Gredler]
+      - draft-ietf-isis-remaining-lifetime-00  [Christian Hopps]
+      - draft-ietf-isis-rfc4971bis-00          [Christian Hopps]
+      - draft-ietf-isis-l2bundles-01
+
+     ## Updated WG-Docs
+      - draft-ietf-isis-mpls-elc-01
+      - draft-ietf-isis-yang-isis-cfg-07
+      - draft-ietf-isis-node-admin-tag-08              [Christian Hopps, Alia Atlas]
+      - draft-ietf-isis-segment-routing-extensions-06  [Christian Hopps]
+      - draft-ietf-isis-prefix-attributes-04           [Christian Hopps, Alia Atlas]
+      - draft-ietf-isis-pcr-05                         [Hannes Gredler, Alia Atlas]
+      - draft-ietf-isis-te-metric-extensions-11        [Hannes Gredler, Alvaro Retana]
+
+     ## Existing WG-Docs
+      - draft-ietf-isis-sbfd-discriminator-02  [Christian Hopps, Alia Atlas]
+      - draft-ietf-bier-isis-extensions-01
+      ...
+   #+end_src
+
+** Install with pip (Pypi)
+   #+name: obtaining source code
+   #+begin_example
+   pip install wgstatus
+   #+end_example
+** Obtaining source (github)
+   #+name: obtaining source code
+   #+begin_example
+   git clone git@github.com:choppsv1/wgstatus.git
+   #+end_example
