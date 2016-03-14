@@ -183,15 +183,22 @@ def print_doc_summary (args, doc, longest, longest_shep):
 
 
 def main (*margs):
+    # from _version import __version__
+    import pkg_resources;
+    __version__ = pkg_resources.get_distribution('wgstatus').version
+
     parser = argparse.ArgumentParser("wgstatus")
     # Should be non-optional arg.
-    parser.add_argument('--last-meeting', help='Meeting number or Date (YYYY-MM-DD) of last IETF')
-    parser.add_argument('--exclude-existing', action="store_true", help='Exclude unchanged docs in summary')
-    parser.add_argument('--include-date', action="store_true", help='Include date in summary')
-    parser.add_argument('--include-shepherd', action="store_true", help='Include shepherd in summary')
-    parser.add_argument('--include-status', action="store_true", help='Include status in summary')
-    parser.add_argument('--org-mode', action="store_true", help='Output org mode friendly slides')
+    parser.add_argument('-l', '--last-meeting', help='Meeting number or Date (YYYY-MM-DD) of last IETF')
+    parser.add_argument('-e', '--exclude-existing', action="store_true", help='Exclude unchanged docs in summary')
+    parser.add_argument('-d', '--include-date', action="store_true", help='Include date in summary')
+    parser.add_argument('-S', '--include-shepherd', action="store_true", help='Include shepherd in summary')
+    parser.add_argument('-s', '--include-status', action="store_true", help='Include status in summary')
+    parser.add_argument('-o', '--org-mode', action="store_true", help='Output org mode friendly slides')
+    parser.add_argument('-v', '--version', action='version',
+                        version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('--use', help=argparse.SUPPRESS)
+
     parser.add_argument('wgname', nargs='?', help='Working group name')
     args = parser.parse_args(*margs)
 

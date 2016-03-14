@@ -3,8 +3,10 @@
 #+AUTHOR: Christian E. Hopps
 #+EMAIL: chopps@chopps.org
 #+STARTUP: beamer content entitiespretty
-#+LaTeX_CLASS_OPTIONS: [24pt,presentation]
 #+OPTIONS: h:2 toc:nil \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t ':t
+
+#+LaTeX_CLASS_OPTIONS: [24pt,presentation]
 #+BEAMER_THEME: m [everytitleformat=regular]
+#+BEAMER_FRAME_LEVEL: 2
 
 #+INCLUDE: "status.org"

@@ -3,7 +3,11 @@
 #+AUTHOR: Christian E. Hopps <chopps@chopps.org>
 #+EMAIL: chopps@chopps.org
 #+STARTUP: beamer content entitiespretty
+
+#+LATEX_CLASS: beamer
 #+OPTIONS: h:2 toc:nil \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t ':t
+
+#+BEAMER_FRAME_LEVEL: 2
 #+BEAMER_THEME: m [everytitleformat=regular]
 
 * Working Group Status Tool
@@ -18,7 +22,7 @@
 ** Simple Example
    \tiny
    #+begin_src sh
-     $ wgstatus isis
+     $ wgstatus  isis
 
      # Document Status Since 2015-11-06 00:00:00
 
