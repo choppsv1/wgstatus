@@ -28,6 +28,7 @@ from bs4 import BeautifulSoup
 
 ORG_LEVEL_OFF = 1
 
+
 def split_nempty (s):
     return [ x.strip() for x in s.split('\n') if x.strip() ]
 
@@ -54,6 +55,7 @@ def get_shepherd (x):
         #return ", ".join(reversed([x.text.split()[-1] for x in shep]))
         return "[{}]".format(", ".join(reversed([x.text for x in shep])))
     return ""
+
 
 def get_url_with_cache (url, basename):
     cachedir = "/tmp/wgstatus.cache"
@@ -139,9 +141,10 @@ def get_orignal_date (url_name):
         else:
             upd = td[1].text.strip().split()[0]
             upd = datetime.datetime.strptime(upd, "%Y-%m-%d")
-        return upd
+        break
     else:
         assert False
+    return upd
 
 
 def print_headline (args, headline, level):
@@ -184,8 +187,8 @@ def print_doc_summary (args, doc, longest, longest_shep):
 
 def main (*margs):
     # from _version import __version__
-    import pkg_resources;
-    __version__ = pkg_resources.get_distribution('wgstatus').version
+    import pkg_resources
+    version = pkg_resources.get_distribution('wgstatus').version
 
     parser = argparse.ArgumentParser("wgstatus")
     # Should be non-optional arg.
@@ -196,7 +199,7 @@ def main (*margs):
     parser.add_argument('-s', '--include-status', action="store_true", help='Include status in summary')
     parser.add_argument('-o', '--org-mode', action="store_true", help='Output org mode friendly slides')
     parser.add_argument('-v', '--version', action='version',
-                        version='%(prog)s {version}'.format(version=__version__))
+                        version='%(prog)s {version}'.format(version=version))
     parser.add_argument('--use', help=argparse.SUPPRESS)
 
     parser.add_argument('wgname', nargs='?', help='Working group name')
@@ -209,7 +212,7 @@ def main (*margs):
     else:
         try:
             lastmeeting = datetime.datetime.strptime(args.last_meeting, "%Y-%m-%d")
-        except:
+        except Exception:
             meeting_info = get_meeting_info()
             lastmeeting = meeting_info[int(args.last_meeting)]
 
@@ -227,7 +230,7 @@ def main (*margs):
 
     # <table class="table table-condensed table-striped">
     table = soup.find('table', {'class': 'table table-condensed table-striped tablesorter'})
-    head = table.find("thead")
+    # head = table.find("thead")
     # body = table.find("tbody")
 
     # Get the column information
@@ -238,8 +241,8 @@ def main (*margs):
     date_idx = header_names.index("date")
     name_idx = header_names.index("document")
     status_idx = header_names.index("status")
-    ipr_idx = header_names.index("ipr")
-    shep_idx = header_names.index("ad")
+    # ipr_idx = header_names.index("ipr")
+    # shep_idx = header_names.index("ad")
 
     # Get the data
     # index 0 "Active IDs" index 1 actual docs, index 2 "RFCs", index 3 actual docs
@@ -252,8 +255,7 @@ def main (*margs):
     docs = [ (x[name_idx],
               parse_date(x[date_idx]),
               split_nempty(x[status_idx].text),
-              get_shepherd(x)
-    ) for x in docs ]
+              get_shepherd(x) ) for x in docs ]
 
     # docs[x][0].div.a.text is the draft name with version
     # docs[x][0].div.a['href'] is the relative url of the doc
