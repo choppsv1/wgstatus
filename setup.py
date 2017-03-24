@@ -20,7 +20,8 @@ from setuptools import setup
 
 required = [
     "BeautifulSoup4",
-    "lxml"
+    "lxml",
+    "requests",
 ]
 
 
@@ -28,7 +29,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup (name='wgstatus',
-       version='0.9.9',
+       version='0.9.10',
        description='wgstatus',
        long_description=read("README.rst"),
        author='Christian E. Hopps',
