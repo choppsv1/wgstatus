@@ -150,6 +150,8 @@ def get_rfcs (wg, after):
     for doc in rdict['objects']:
         # Rewrite some fields
         doc = json_dict(doc)
+        if not doc['rfc']:
+            continue
         doc['name'] = "RFC" + doc['rfc']
         # print("Got {}".format(doc['name']))
         doc['time'] = datetime.datetime.strptime(doc['time'], "%Y-%m-%dT%H:%M:%S")
@@ -197,41 +199,6 @@ def get_shepherd (x):
         #return ", ".join(reversed([x.text.split()[-1] for x in shep]))
         return "[{}]".format(", ".join(reversed([x.text for x in shep])))
     return ""
-
-
-#
-# XXX
-#
-# def get_orignal_date (url_name):
-#     url = "https://datatracker.ietf.org{}00/".format(url_name)
-#     cachename = url_name.split('/')[-2] + "-00"
-#     try:
-#         output = get_url_with_cache(url, cachename)
-#         assert output
-#     except (IOError, AssertionError):
-#         # Fake a date
-#         return datetime.datetime.strptime("2010", "%Y")
-
-#     soup = BeautifulSoup(output, "lxml")
-#     upds = soup.find_all("th")
-#     if not upds:
-#         pdb.set_trace()
-
-#     for upd in upds:
-#         if "Last updated" not in upd.text:
-#             continue
-
-#         tr = upd.parent
-#         td = tr.find_all("td")
-#         match = re.search(r"latest revision (\d+-\d+-\d+)", td[1].text.strip())
-#         if match:
-#             upd = datetime.datetime.strptime(match.group(1), "%Y-%m-%d")
-#         else:
-#             upd = td[1].text.strip().split()[0]
-#             upd = datetime.datetime.strptime(upd, "%Y-%m-%d")
-#         return upd
-#     else:
-#         assert False
 
 
 def print_headline (args, headline, level):
@@ -310,7 +277,8 @@ def get_new_and_updated(docs, lastmeeting):
                     new.add(doc)
                 else:
                     updated.add(doc)
-            except Exception:
+            except Exception as ex:
+                print("Got exception fetching history: {}".format(ex))
                 updated.add(doc)
 
 

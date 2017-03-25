@@ -8,11 +8,16 @@
 # CONSENT OF THE AUTHOR.
 #
 from __future__ import absolute_import, division, unicode_literals, print_function, nested_scopes
+# import appdirs
 import base64
 import datetime
 import json
 import os
 import sys
+import requests
+# import requests_cache
+import tempfile
+
 try:
     import urllib2 as urllib
     from urllib import urlopen
@@ -22,8 +27,9 @@ except:
     from urllib.request import urlopen
     from urllib.parse import urlencode
 
-
 CACHEDIR = "~/.cache/wgstatus"
+#CACHEDIR = appdirs.user_cache_dir("wgstatus")
+#requests_cache.install_cache(cache_name='wgstatus', expire_after=3600)
 
 if sys.version_info[0] >= 3:
     def encodeurl (url):
@@ -66,21 +72,24 @@ def file_age_in_seconds (pname):
 
 
 def get_with_cache(url, payload, cache_seconds):
+    actual_url = url
     if payload:
         parms = urlencode(payload)
         if parms:
-            url = url + "?" + parms
+            actual_url = url + "?" + parms
 
-    pname = url2pathname(url)
+    pname = url2pathname(actual_url)
     if file_age_in_seconds(pname) <= cache_seconds:
         with open(pname) as fp:
             return json.load(fp)
 
-    response = urlopen(url)
-    data = json.load(response)
+    response = requests.get(url, payload)
+    data = response.json()
 
-    with open(pname, "w") as fp:
-        json.dump(data, fp)
+    if data:
+        with open(pname, "w") as fp:
+            json.dump(data, fp)
+
     return data
 
 

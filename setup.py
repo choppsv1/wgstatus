@@ -18,17 +18,22 @@
 import os
 from setuptools import setup
 
+required = [
+    "requests",
+]
+
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup (name='wgstatus',
-       version='1.1.0',
+       version='1.1.2',
        description='wgstatus',
        long_description=read("README.rst"),
        author='Christian E. Hopps',
        author_email='chopps@gmail.com',
        license='Apache License, Version 2.0',
+       install_requires=required,
        url='https://github.com/choppsv1/wgstatus',
        entry_points={"console_scripts": [ "wgstatus = wgstatus.main:main"]},
        packages=['wgstatus'])
