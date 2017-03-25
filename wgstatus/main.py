@@ -32,11 +32,13 @@ import sys
 
 from . import rest
 
+
 class json_dict (dict):
     def __hash__ (self):
         return self['resource_uri'].__hash__()
 
-TIME_LEN_HOUR = 60*60
+
+TIME_LEN_HOUR = 60 * 60
 TIME_LEN_DAY = TIME_LEN_HOUR * 24
 TIME_LEN_WEEK = TIME_LEN_DAY * 7
 
@@ -59,8 +61,7 @@ def safelen (v):
     return len(v)
 
 
-# From Fred Bakers
-# def get_states(slug, tag):
+# From Fred Bakers get_states(slug, tag):
 def get_states():
     payload = {
         "format": "json",
@@ -90,12 +91,6 @@ def get_states():
                 rfc_states.add(uri)
 
 
-print("Getting all document states")
-get_states()
-
-rfc_uri = states_by_name["RFC"]['resource_uri']
-# wgdoc_uri = states_by_slug["wg-doc"]['resource_uri']
-
 def get_wg (wgname):
     payload = {
         "format": "json",
@@ -108,6 +103,7 @@ def get_wg (wgname):
     assert rdict['meta']['next'] is None
     return rdict['objects'][0]
 
+
 def get_drafts (wg):
     payload = {
         "format": "json",
@@ -118,9 +114,6 @@ def get_drafts (wg):
         # "group__acronym__in": wg['acronym'],
         "group__acronym__in": wg,
         "expires__gt": datetime.datetime.now().strftime("%Y-%m-%d"),
-    }
-    payload_rfcs = {
-        "states__slug__in": "pub",
     }
     print("Getting IETF docs for {}".format(wg))
     # print("Getting IETF docs for {}".format(wg['acronym']))
@@ -178,21 +171,17 @@ def get_meetings ():
 
     meeting_info = {}
     for meeting in rdict['objects']:
-        meeting_info[meeting['number']] = dict(meeting)
+        meeting = meeting_info[meeting['number']] = dict(meeting)
+        meeting['date'] = datetime.datetime.strptime(meeting['date'], "%Y-%m-%d")
 
     return meeting_info
 
 
-def split_nempty (s):
-    return [ x.strip() for x in s.split('\n') if x.strip() ]
-
-
-def parse_date (e):
-    datestring = e.span.text.strip()
-    try:
-        return datetime.datetime.strptime(datestring, "%Y-%m-%d")
-    except ValueError:
-        return datetime.datetime.strptime(datestring, "%Y-%m")
+def find_last_meeting (meeting_info):
+    now = datetime.datetime.now()
+    for key in reversed(sorted(meeting_info.keys())):
+        if meeting_info[key]['date'] < now:
+            return meeting_info[key]
 
 
 def get_shepherd (x):
@@ -297,6 +286,19 @@ def print_doc_summary (args, doc, longest, longest_shep):
     print(fmt)
 
 
+def get_new_and_updated(docs, lastmeeting):
+    existing = [ x for x in docs if x['time'] < lastmeeting ]
+    new_or_updated = [ x for x in docs if x['time'] >= lastmeeting ]
+    new = set()
+    updated = set()
+    for doc in docs:
+        if int(doc['rev']) == 0:
+            new.add(doc)
+        else:
+            updated.add(doc)
+    return new, updated, existing
+
+
 def main (*margs):
     # from _version import __version__
     __version__ = pkg_resources.get_distribution('wgstatus').version
@@ -305,7 +307,9 @@ def main (*margs):
     # Should be non-optional arg.
     parser.add_argument('-l', '--last-meeting', help='Meeting number or Date (YYYY-MM-DD) of last IETF')
     parser.add_argument('-e', '--exclude-existing', action="store_true", help='Exclude unchanged docs in summary')
+    parser.add_argument('-f', '--flush', action="store_true", help='Flush the caches')
     parser.add_argument('-d', '--include-date', action="store_true", help='Include date in summary')
+    parser.add_argument('-r', '--include-replaced', action="store_true", help='Include replaced drafts')
     parser.add_argument('-S', '--include-shepherd', action="store_true", help='Include shepherd in summary')
     parser.add_argument('-s', '--include-status', action="store_true", help='Include status in summary')
     parser.add_argument('-o', '--org-mode', action="store_true", help='Output org mode friendly slides')
@@ -316,26 +320,32 @@ def main (*margs):
     parser.add_argument('wgname', nargs='?', help='Working group name')
     args = parser.parse_args(*margs)
 
+    if args.flush:
+        rest.flush_caches()
+
     if not args.last_meeting:
         meeting_info = get_meetings()
-        lastidx = sorted(meeting_info.keys())[-1]
-        lastmeeting = datetime.datetime.strptime(meeting_info[lastidx]['date'], "%Y-%m-%d")
+        meeting = find_last_meeting(meeting_info)
+        lastmeeting = meeting['date']
     else:
         try:
             lastmeeting = datetime.datetime.strptime(args.last_meeting, "%Y-%m-%d")
+            meeting = None
         except Exception:
             meeting_info = get_meetings()
-            lastmeeting = datetime.datetime.strptime(meeting_info[args.last_meeting]['date'], "%Y-%m-%d")
+            meeting = meeting_info[args.last_meeting]
+            lastmeeting = meeting['date']
 
     if not args.wgname:
         print("Need to specify a WG name (use -h for help)")
         sys.exit(1)
 
     #wg = get_wg(args.wgname)
+    print("Getting IETF document states")
+    get_states()
+
     drafts = get_drafts(args.wgname)
 
-
-    sheps = {}
     if args.include_shepherd:
         for draft in drafts:
             shep_email_uri = draft['shepherd']
@@ -351,73 +361,40 @@ def main (*margs):
                                         TIME_LEN_WEEK)
             draft['shepherd'] = rdict['name']
 
-    # docs = [x for x in all_trs if x.find("td", "doc")]
-    # docs = [ x.find_all("td") for x in docs ]
-    # docs = [ (x[name_idx],
-    #           parse_date(x[date_idx]),
-    #           split_nempty(x[status_idx].text),
-    #           get_shepherd(x)
-    # ) for x in docs ]
-
-    # docs[x][0].div.a.text is the draft name with version
-    # docs[x][0].div.a['href'] is the relative url of the doc
-    # docs[x][0].div.b.text is the title of the draft
-    # docs[x][1].a.text.strip() is the date y-m-d
-    # docs[x][2] is a list of status names
-
-    # docs = [ (x[name_idx], x[date_idx], x[status_idx]) for x in docs ]
-
     docs = set(drafts)
+
+    rfc_uri = states_by_name["RFC"]['resource_uri']
+    wgdoc_uri = states_by_name["WG Document"]['resource_uri']
+    replaced_uri = states_by_name["Replaced"]['resource_uri']
 
     rfcs = set([ x for x in docs if rfc_uri in x['states'] ])
     docs -= rfcs
-
-    iesgs = set([ x for x in docs if (x['states'] & (rfc_states|iesg_states)) ])
-    # iesgs = sorted(iesgs, key=lambda x: x['name'])
+    iesgs = set([ x for x in docs if (x['states'] & (rfc_states | iesg_states)) ])
     docs -= iesgs
+    wgdocs = set([ x for x in docs if wgdoc_uri in x['states'] ])
+    docs -= wgdocs
+    idocs = docs
 
-    wgdocs = set([ x for x in docs if (x['states'] & wg_states)])
-    # wgdocs = sorted(wgdocs, key=lambda x: x['name'])
-    idocs = docs - wgdocs
+    if not args.include_replaced:
+        idocs = set([ x for x in docs if replaced_uri not in x['states'] ])
 
     # It seems we don't get RFCs from the normal query due to expired
-    docs = get_rfcs(args.wgname, str(lastmeeting.date()))
-    rfcs = set([ x for x in docs if rfc_uri in x['states'] ])
-
+    rfcs = get_rfcs(args.wgname, str(lastmeeting.date()))
+    rfcs = set([ x for x in rfcs if rfc_uri in x['states'] ])
     new_rfcs = [ x for x in rfcs if x['time'] >= lastmeeting ]
 
+    new_wgstatus, updated_wgstatus, existing_wgstatus = get_new_and_updated(wgdocs, lastmeeting)
+    new_iesgs, updated_iesgs, existing_iesgs = get_new_and_updated(iesgs, lastmeeting)
+    updated_iesgs = new_iesgs | updated_iesgs
+    new_ind, updated_ind, existing_ind = get_new_and_updated(idocs, lastmeeting)
 
-    existing = [ x for x in drafts if x['time'] < lastmeeting ]
-    new_or_updated = [ x for x in drafts if x['time'] >= lastmeeting ]
+    pdb.set_trace()
 
-    new = set()
-    updated = set()
-    for doc in new_or_updated:
-        if int(doc['rev']) == 0:
-            new.add(doc)
-        else:
-            updated.add(doc)
-            # # Check to see if original was published after last meeting.
-            # origdate = get_orignal_date(doc[0].div.a['href'])
-            # if origdate >= lastmeeting:
-            #     # print("Original also published ({}) after last meeting ({})".format(origdate, lastmeeting))
-            #     new.add(doc)
-            # else:
-            #     updated.add(doc)
-
-    new_wgstatus = [ x for x in new if x in wgdocs ]
-    updated_wgstatus = [ x for x in updated if x in wgdocs ]
-    existing_wgstatus = [ x for x in existing if x in wgdocs ]
-
-    new_iesgs = [ x for x in new if x in iesgs ]
-    updated_iesgs = [ x for x in updated if x in iesgs ]
-    existing_iesgs = [ x for x in existing if x in iesgs ]
-
-    new_ind = [ x for x in new if x in idocs ]
-    updated_ind = [ x for x in updated if x in idocs ]
-    existing_ind = [ x for x in existing if x in idocs ]
-
-    print_headline(args, "Document Status Since {}".format(lastmeeting), 1)
+    if meeting:
+        print_headline(args, "Document Status Since IETF-{} in {} ({})".format(
+            meeting['number'], meeting['city'], lastmeeting.date()), 1)
+    else:
+        print_headline(args, "Document Status Since {}".format(lastmeeting), 1)
 
     def get_longest (docs):
         longest = reduce(max, [ safelen(x['name']) for x in docs ], 0)
@@ -427,15 +404,14 @@ def main (*margs):
         return longest, longest_shep
 
     for doc_set, desc in [(new_rfcs, "New RFCs"),
-                          (new_iesgs, "New Docs in IESG"),
-                          (updated_iesgs, "Updated Docs in IESG"),
+                          (updated_iesgs, "Docs in IESG"),
                           (existing_iesgs, "Existing Docs in IESG"),
                           (new_wgstatus, "New WG Docs"),
                           (updated_wgstatus, "Updated WG Docs"),
                           (existing_wgstatus, "Existing WG Docs"),
                           (new_ind, "New Individual Docs"),
                           (updated_ind, "Updated Individual Docs"),
-                          (existing_ind, "Existing Individual Docs"), ]:
+                          (existing_ind, "Existing Individual Docs")]:
         if doc_set:
             print_headline(args, desc, 2)
             longest, longest_shep = get_longest(doc_set)
