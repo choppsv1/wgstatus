@@ -38,8 +38,7 @@ class json_dict (dict):
         return self['resource_uri'].__hash__()
 
 
-TIME_LEN_HOUR = 60 * 60
-TIME_LEN_DAY = TIME_LEN_HOUR * 24
+TIME_LEN_DAY = 60 * 60 * 24
 TIME_LEN_WEEK = TIME_LEN_DAY * 7
 
 ORG_LEVEL_OFF = 1
@@ -68,7 +67,7 @@ def get_states():
         "limit": 0,
         # "type__slug__in": slug,
     }
-    rdict = rest.get_with_cache(base_url + "/doc/state/", payload, TIME_LEN_DAY)
+    rdict = rest.get_with_cache(base_url + "/doc/state/", payload, TIME_LEN_WEEK)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
 
@@ -98,7 +97,7 @@ def get_wg (wgname):
         "acronym": wgname,
     }
     print("Getting IETF WG {}".format(wgname))
-    rdict = rest.get_with_cache(base_url + "/group/group/", payload, TIME_LEN_DAY)
+    rdict = rest.get_with_cache(base_url + "/group/group/", payload, TIME_LEN_WEEK)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
     return rdict['objects'][0]
@@ -117,7 +116,7 @@ def get_drafts (wg):
     }
     print("Getting IETF docs for {}".format(wg))
     # print("Getting IETF docs for {}".format(wg['acronym']))
-    rdict = rest.get_with_cache(base_url + "/doc/document/", payload, TIME_LEN_HOUR)
+    rdict = rest.get_with_cache(base_url + "/doc/document/", payload, TIME_LEN_DAY)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
     docs = set()
@@ -144,7 +143,7 @@ def get_rfcs (wg, after):
     }
     print("Getting IETF RFCs for {}".format(wg))
     # print("Getting IETF docs for {}".format(wg['acronym']))
-    rdict = rest.get_with_cache(base_url + "/doc/document/", payload, TIME_LEN_HOUR)
+    rdict = rest.get_with_cache(base_url + "/doc/document/", payload, TIME_LEN_DAY)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
     docs = set()
@@ -165,7 +164,7 @@ def get_meetings ():
         "limit": 0,
         "type": "ietf",
     }
-    rdict = rest.get_with_cache(base_url + "/meeting/meeting/", payload, TIME_LEN_DAY)
+    rdict = rest.get_with_cache(base_url + "/meeting/meeting/", payload, TIME_LEN_WEEK)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
 
@@ -304,7 +303,7 @@ def get_new_and_updated(docs, lastmeeting):
 
             print("Getting history for {}".format(doc['name']))
             try:
-                rdict = rest.get_with_cache(url, payload, TIME_LEN_HOUR)
+                rdict = rest.get_with_cache(url, payload, TIME_LEN_WEEK)
                 zerodoc = rdict.pop()
                 pub_time = datetime.datetime.strptime(zerodoc['time'], "%Y-%m-%dT%H:%M:%S")
                 if pub_time >= lastmeeting:
