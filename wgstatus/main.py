@@ -296,6 +296,25 @@ def get_new_and_updated(docs, lastmeeting):
             new.add(doc)
         else:
             updated.add(doc)
+            url = "https://datatracker.ietf.org/api/v1/doc/dochistory/"
+            payload = {
+                "name": doc['name'],
+                "rev": "00"
+            }
+
+            print("Getting history for {}".format(doc['name']))
+            try:
+                rdict = rest.get_with_cache(url, payload, TIME_LEN_HOUR)
+                zerodoc = rdict.pop()
+                pub_time = datetime.datetime.strptime(zerodoc['time'], "%Y-%m-%dT%H:%M:%S")
+                if pub_time >= lastmeeting:
+                    new.add(doc)
+                else:
+                    updated.add(doc)
+            except Exception:
+                updated.add(doc)
+
+
     return new, updated, existing
 
 
@@ -387,8 +406,6 @@ def main (*margs):
     new_iesgs, updated_iesgs, existing_iesgs = get_new_and_updated(iesgs, lastmeeting)
     updated_iesgs = new_iesgs | updated_iesgs
     new_ind, updated_ind, existing_ind = get_new_and_updated(idocs, lastmeeting)
-
-    pdb.set_trace()
 
     if meeting:
         print_headline(args, "Document Status Since IETF-{} in {} ({})".format(
