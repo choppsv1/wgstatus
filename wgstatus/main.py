@@ -27,14 +27,17 @@ import pdb
 import pkg_resources
 import pprint
 import re
-import requests
 import subprocess
 import sys
-from bs4 import BeautifulSoup
+
+from . import rest
 
 class json_dict (dict):
     def __hash__ (self):
         return self['resource_uri'].__hash__()
+
+TIME_LEN_HOUR = 60*60
+TIME_LEN_DAY = TIME_LEN_HOUR * 24
 
 ORG_LEVEL_OFF = 1
 
@@ -57,8 +60,7 @@ def get_states():
         "limit": 0,
         # "type__slug__in": slug,
     }
-    response = requests.get(base_url + "/doc/state/", payload)
-    rdict = response.json()
+    rdict = rest.get_with_cache(base_url + "/doc/state/", payload, TIME_LEN_DAY)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
 
@@ -94,8 +96,7 @@ def get_wg (wgname):
         "acronym": wgname,
     }
     print("Getting IETF WG {}".format(wgname))
-    response = requests.get(base_url + "/group/group/", payload)
-    rdict = response.json()
+    rdict = rest.get_with_cache(base_url + "/group/group/", payload, TIME_LEN_DAY)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
     return rdict['objects'][0]
@@ -116,8 +117,7 @@ def get_drafts (wg):
     }
     print("Getting IETF docs for {}".format(wg))
     # print("Getting IETF docs for {}".format(wg['acronym']))
-    response = requests.get(base_url + "/doc/document/", payload)
-    rdict = response.json()
+    rdict = rest.get_with_cache(base_url + "/doc/document/", payload, TIME_LEN_HOUR)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
     docs = set()
@@ -144,8 +144,7 @@ def get_rfcs (wg, after):
     }
     print("Getting IETF RFCs for {}".format(wg))
     # print("Getting IETF docs for {}".format(wg['acronym']))
-    response = requests.get(base_url + "/doc/document/", payload)
-    rdict = response.json()
+    rdict = rest.get_with_cache(base_url + "/doc/document/", payload, TIME_LEN_HOUR)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
     docs = set()
@@ -166,8 +165,7 @@ def get_meetings ():
         "limit": 0,
         "type": "ietf",
     }
-    response = requests.get(base_url + "/meeting/meeting/", payload)
-    rdict = response.json()
+    rdict = rest.get_with_cache(base_url + "/meeting/meeting/", payload, TIME_LEN_DAY)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
 
@@ -218,37 +216,39 @@ def get_url_with_cache (url, basename):
         subprocess.check_output(cmd, shell=True)
     return open(path).read().encode("utf-8")
 
+#
+# XXX
+#
+# def get_orignal_date (url_name):
+#     url = "https://datatracker.ietf.org{}00/".format(url_name)
+#     cachename = url_name.split('/')[-2] + "-00"
+#     try:
+#         output = get_url_with_cache(url, cachename)
+#         assert output
+#     except (IOError, AssertionError):
+#         # Fake a date
+#         return datetime.datetime.strptime("2010", "%Y")
 
-def get_orignal_date (url_name):
-    url = "https://datatracker.ietf.org{}00/".format(url_name)
-    cachename = url_name.split('/')[-2] + "-00"
-    try:
-        output = get_url_with_cache(url, cachename)
-        assert output
-    except (IOError, AssertionError):
-        # Fake a date
-        return datetime.datetime.strptime("2010", "%Y")
+#     soup = BeautifulSoup(output, "lxml")
+#     upds = soup.find_all("th")
+#     if not upds:
+#         pdb.set_trace()
 
-    soup = BeautifulSoup(output, "lxml")
-    upds = soup.find_all("th")
-    if not upds:
-        pdb.set_trace()
+#     for upd in upds:
+#         if "Last updated" not in upd.text:
+#             continue
 
-    for upd in upds:
-        if "Last updated" not in upd.text:
-            continue
-
-        tr = upd.parent
-        td = tr.find_all("td")
-        match = re.search(r"latest revision (\d+-\d+-\d+)", td[1].text.strip())
-        if match:
-            upd = datetime.datetime.strptime(match.group(1), "%Y-%m-%d")
-        else:
-            upd = td[1].text.strip().split()[0]
-            upd = datetime.datetime.strptime(upd, "%Y-%m-%d")
-        return upd
-    else:
-        assert False
+#         tr = upd.parent
+#         td = tr.find_all("td")
+#         match = re.search(r"latest revision (\d+-\d+-\d+)", td[1].text.strip())
+#         if match:
+#             upd = datetime.datetime.strptime(match.group(1), "%Y-%m-%d")
+#         else:
+#             upd = td[1].text.strip().split()[0]
+#             upd = datetime.datetime.strptime(upd, "%Y-%m-%d")
+#         return upd
+#     else:
+#         assert False
 
 
 def print_headline (args, headline, level):
@@ -284,15 +284,17 @@ def print_doc_summary (args, doc, longest, longest_shep):
         fmt += "{name} - {title}"
     else:
         fmt += "{name}"
-    if args.include_shepherd:
-        fmt += " "
-        fmt += " " * (longest - len(name)) + " {shepherd}"
-    if args.include_status:
-        if not args.include_shepherd:
-            fmt += " " * (longest - len(name))
-        else:
-            fmt += " " * (longest_shep - len(shep))
-        fmt += " {status}"
+
+    if not name.startswith("RFC"):
+        if args.include_shepherd:
+            fmt += " "
+            fmt += " " * (longest - len(name)) + " {shepherd}"
+        if args.include_status:
+            if not args.include_shepherd:
+                fmt += " " * (longest - len(name))
+            else:
+                fmt += " " * (longest_shep - len(shep))
+            fmt += " {status}"
 
     fmt = fmt.format(date=doc['time'], title=doc['title'], name=name,
                      status=states_to_string(doc['states']),

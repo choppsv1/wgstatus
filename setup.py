@@ -18,24 +18,17 @@
 import os
 from setuptools import setup
 
-required = [
-    "BeautifulSoup4",
-    "lxml",
-    "requests",
-]
-
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup (name='wgstatus',
-       version='0.9.10',
+       version='0.9.11',
        description='wgstatus',
        long_description=read("README.rst"),
        author='Christian E. Hopps',
        author_email='chopps@gmail.com',
        license='Apache License, Version 2.0',
-       install_requires=required,
        url='https://github.com/choppsv1/wgstatus',
        entry_points={"console_scripts": [ "wgstatus = wgstatus.main:main"]},
        packages=['wgstatus'])
