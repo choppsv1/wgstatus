@@ -38,6 +38,7 @@ class json_dict (dict):
 
 TIME_LEN_HOUR = 60*60
 TIME_LEN_DAY = TIME_LEN_HOUR * 24
+TIME_LEN_WEEK = TIME_LEN_DAY * 7
 
 ORG_LEVEL_OFF = 1
 
@@ -50,6 +51,12 @@ states_by_uri = {}
 wg_states = set()
 iesg_states = set()
 rfc_states = set()
+
+
+def safelen (v):
+    if not v:
+        return 0
+    return len(v)
 
 
 # From Fred Bakers
@@ -204,18 +211,6 @@ def get_shepherd (x):
     return ""
 
 
-def get_url_with_cache (url, basename):
-    cachedir = "/tmp/wgstatus.cache"
-    if not os.path.exists(cachedir):
-        os.system("mkdir -p " + cachedir)
-
-    path = os.path.join(cachedir, basename)
-    if not os.path.exists(path):
-        print("Fetching {} into cache".format(basename))
-        cmd = "curl -s -o {} {}".format(path, url)
-        subprocess.check_output(cmd, shell=True)
-    return open(path).read().encode("utf-8")
-
 #
 # XXX
 #
@@ -339,6 +334,23 @@ def main (*margs):
     #wg = get_wg(args.wgname)
     drafts = get_drafts(args.wgname)
 
+
+    sheps = {}
+    if args.include_shepherd:
+        for draft in drafts:
+            shep_email_uri = draft['shepherd']
+            if not shep_email_uri:
+                draft['shepherd'] = ""
+                continue
+            rdict = rest.get_with_cache("https://datatracker.ietf.org" + shep_email_uri,
+                                        None,
+                                        TIME_LEN_WEEK)
+            person = rdict['person']
+            rdict = rest.get_with_cache("https://datatracker.ietf.org/" + person,
+                                        None,
+                                        TIME_LEN_WEEK)
+            draft['shepherd'] = rdict['name']
+
     # docs = [x for x in all_trs if x.find("td", "doc")]
     # docs = [ x.find_all("td") for x in docs ]
     # docs = [ (x[name_idx],
@@ -408,11 +420,11 @@ def main (*margs):
     print_headline(args, "Document Status Since {}".format(lastmeeting), 1)
 
     def get_longest (docs):
-        longest = reduce(max, [ len(x['name']) for x in docs ], 0)
-        return longest, 10
-        # shep XXX
-        # longest_shep = reduce(max, [ len(x[3]) for x in docs ], 0)
-        # return longest, longest_shep
+        longest = reduce(max, [ safelen(x['name']) for x in docs ], 0)
+        if not args.include_shepherd:
+            return longest, 0
+        longest_shep = reduce(max, [ safelen(x['shepherd']) for x in docs ], 0)
+        return longest, longest_shep
 
     for doc_set, desc in [(new_rfcs, "New RFCs"),
                           (new_iesgs, "New Docs in IESG"),
