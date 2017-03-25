@@ -25,6 +25,13 @@ except:
 
 CACHEDIR = "~/.cache/wgstatus"
 
+if sys.version_info[0] >= 3:
+    def encodeurl (url):
+        return base64.urlsafe_b64encode(bytes(url, "utf-8"))
+else:
+    def encodeurl (url):
+        return base64.urlsafe_b64encode(url)
+
 
 def flush_caches ():
     os.system("rm -rf {}".format(CACHEDIR))
@@ -39,7 +46,7 @@ def get_cache_dir ():
 
 def url2pathname (url):
     cachedir = get_cache_dir()
-    fname = base64.urlsafe_b64encode(bytes(url, "utf-8"))
+    fname = encodeurl(url)
     fname = fname.decode("utf-8")
     return os.path.join(cachedir, fname)
 

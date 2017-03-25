@@ -23,7 +23,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup (name='wgstatus',
-       version='1.0.1',
+       version='1.1.0',
        description='wgstatus',
        long_description=read("README.rst"),
        author='Christian E. Hopps',
