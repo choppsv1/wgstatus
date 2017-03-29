@@ -271,7 +271,7 @@ def get_new_and_updated(docs, lastmeeting):
             print("Getting history for {}".format(doc['name']))
             try:
                 rdict = rest.get_with_cache(url, payload, TIME_LEN_WEEK)
-                zerodoc = rdict.pop()
+                zerodoc = rdict['objects'][0]
                 pub_time = datetime.datetime.strptime(zerodoc['time'], "%Y-%m-%dT%H:%M:%S")
                 if pub_time >= lastmeeting:
                     new.add(doc)
