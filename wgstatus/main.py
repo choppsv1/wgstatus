@@ -49,6 +49,7 @@ states_by_name = {}
 states_by_slug = {}
 states_by_uri = {}
 
+real_wg_states = set()
 wg_states = set()
 iesg_states = set()
 rfc_states = set()
@@ -80,6 +81,7 @@ def get_states():
             states_by_name[state['name']] = state_copy
             states_by_slug[state['slug']] = state_copy
             states_by_uri[uri] = state_copy
+
             # print("slug: {}: uri: {} type: {} state: {}".format(state['slug'], uri, state['type'], state['name']))
             # pprint.pprint(state)
             if state['type'] == "/api/v1/doc/statetype/draft-stream-ietf/":
@@ -88,6 +90,11 @@ def get_states():
                 iesg_states.add(uri)
             elif state['type'] == "/api/v1/doc/statetype/draft-rfceditor/":
                 rfc_states.add(uri)
+
+    # Fixup - remove candidate for WG adoption from wg_states
+    real_wg_states.add(states_by_slug['wg-doc']['resource_uri'])
+    real_wg_states.add(states_by_slug['wg-lc']['resource_uri'])
+    real_wg_states.add(states_by_slug['chair-w']['resource_uri'])
 
 
 def get_wg (wgname):
@@ -109,9 +116,9 @@ def get_drafts (wg):
         "limit": 0,
         # "rfcs": "on",
         # "activedrafts": "on",
-        # "name__contains": wg,
+        "name__contains": wg,
         # "group__acronym__in": wg['acronym'],
-        "group__acronym__in": wg,
+        # "group__acronym__in": wg,
         "expires__gt": datetime.datetime.now().strftime("%Y-%m-%d"),
     }
     print("Getting IETF docs for {}".format(wg))
@@ -255,9 +262,10 @@ def print_doc_summary (args, doc, longest, longest_shep):
 def get_new_and_updated(docs, lastmeeting):
     existing = [ x for x in docs if x['time'] < lastmeeting ]
     new_or_updated = [ x for x in docs if x['time'] >= lastmeeting ]
+
     new = set()
     updated = set()
-    for doc in docs:
+    for doc in new_or_updated:
         if int(doc['rev']) == 0:
             new.add(doc)
         else:
@@ -281,7 +289,6 @@ def get_new_and_updated(docs, lastmeeting):
                 print("Got exception fetching history: {}".format(ex))
                 updated.add(doc)
 
-
     return new, updated, existing
 
 
@@ -299,6 +306,7 @@ def main (*margs):
     parser.add_argument('-S', '--include-shepherd', action="store_true", help='Include shepherd in summary')
     parser.add_argument('-s', '--include-status', action="store_true", help='Include status in summary')
     parser.add_argument('-o', '--org-mode', action="store_true", help='Output org mode friendly slides')
+    parser.add_argument('--print-states', action="store_true", help='Output document states')
     parser.add_argument('-v', '--version', action='version',
                         version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('--use', help=argparse.SUPPRESS)
@@ -308,6 +316,30 @@ def main (*margs):
 
     if args.flush:
         rest.flush_caches()
+
+    #wg = get_wg(args.wgname)
+    print("Getting IETF document states")
+    get_states()
+
+    if args.print_states:
+        print("RFC States")
+        for state in rfc_states:
+            print("{}: {}: {}".format(state,
+                                      states_by_uri[state]["slug"],
+                                      states_by_uri[state]["name"]))
+
+        print("IESG States")
+        for state in iesg_states:
+            print("{}: {}: {}".format(state,
+                                      states_by_uri[state]["slug"],
+                                      states_by_uri[state]["name"]))
+
+        print("WG States")
+        for state in wg_states:
+            print("{}: {}: {}".format(state,
+                                      states_by_uri[state]["slug"],
+                                      states_by_uri[state]["name"]))
+        sys.exit(0)
 
     if not args.last_meeting:
         meeting_info = get_meetings()
@@ -325,10 +357,6 @@ def main (*margs):
     if not args.wgname:
         print("Need to specify a WG name (use -h for help)")
         sys.exit(1)
-
-    #wg = get_wg(args.wgname)
-    print("Getting IETF document states")
-    get_states()
 
     drafts = get_drafts(args.wgname)
 
@@ -350,14 +378,14 @@ def main (*margs):
     docs = set(drafts)
 
     rfc_uri = states_by_name["RFC"]['resource_uri']
-    wgdoc_uri = states_by_name["WG Document"]['resource_uri']
+    # wgdoc_uri = states_by_name["WG Document"]['resource_uri']
     replaced_uri = states_by_name["Replaced"]['resource_uri']
 
     rfcs = set([ x for x in docs if rfc_uri in x['states'] ])
     docs -= rfcs
     iesgs = set([ x for x in docs if (x['states'] & (rfc_states | iesg_states)) ])
     docs -= iesgs
-    wgdocs = set([ x for x in docs if wgdoc_uri in x['states'] ])
+    wgdocs = set([ x for x in docs if (x['states'] & real_wg_states) ])
     docs -= wgdocs
     idocs = docs
 
