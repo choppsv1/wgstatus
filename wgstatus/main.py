@@ -4,7 +4,7 @@
 #
 # November 1 2015, Christian Hopps <chopps@gmail.com>
 #
-# Copyright (c) 2015, Deutsche Telekom AG.
+# Copyright (c) 2015-2017, Deutsche Telekom AG.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -94,7 +94,9 @@ def get_states():
     # Fixup - remove candidate for WG adoption from wg_states
     real_wg_states.add(states_by_slug['wg-doc']['resource_uri'])
     real_wg_states.add(states_by_slug['wg-lc']['resource_uri'])
-    real_wg_states.add(states_by_slug['chair-w']['resource_uri'])
+    # Multiple states use this slug
+    # real_wg_states.add(states_by_slug['chair-w']['resource_uri'])
+    real_wg_states.add(states_by_name['Waiting for WG Chair Go-Ahead']['resource_uri'])
 
 
 def get_wg (wgname):
@@ -146,6 +148,7 @@ def get_rfcs (wg, after):
         # "group__acronym__in": wg['acronym'],
         # "time__gt": after,
         "group__acronym__in": wg,
+
         "states__slug__in": "pub",
     }
     print("Getting IETF RFCs for {}".format(wg))
