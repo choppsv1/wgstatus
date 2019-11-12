@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-#
+# -*- coding: utf-8 eval: (yapf-mode 1) -*-
 #
 # When converting to REST api use used Fred Baker's perl code heavily.
 #
 # November 1 2015, Christian Hopps <chopps@gmail.com>
 #
+# Copyright (c) 2019, Christian E. Hopps
 # Copyright (c) 2015-2017, Deutsche Telekom AG.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +34,8 @@ import sys
 from . import rest
 
 
-class json_dict (dict):
-    def __hash__ (self):
+class json_dict(dict):
+    def __hash__(self):
         return self['resource_uri'].__hash__()
 
 
@@ -55,7 +56,7 @@ iesg_states = set()
 rfc_states = set()
 
 
-def safelen (v):
+def safelen(v):
     if not v:
         return 0
     return len(v)
@@ -68,7 +69,8 @@ def get_states():
         "limit": 0,
         # "type__slug__in": slug,
     }
-    rdict = rest.get_with_cache(base_url + "/doc/state/", payload, TIME_LEN_WEEK)
+    rdict = rest.get_with_cache(base_url + "/doc/state/", payload,
+                                TIME_LEN_WEEK)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
 
@@ -96,23 +98,25 @@ def get_states():
     real_wg_states.add(states_by_slug['wg-lc']['resource_uri'])
     # Multiple states use this slug
     # real_wg_states.add(states_by_slug['chair-w']['resource_uri'])
-    real_wg_states.add(states_by_name['Waiting for WG Chair Go-Ahead']['resource_uri'])
+    real_wg_states.add(
+        states_by_name['Waiting for WG Chair Go-Ahead']['resource_uri'])
 
 
-def get_wg (wgname):
+def get_wg(wgname):
     payload = {
         "format": "json",
         "limit": 0,
         "acronym": wgname,
     }
     print("Getting IETF WG {}".format(wgname))
-    rdict = rest.get_with_cache(base_url + "/group/group/", payload, TIME_LEN_WEEK)
+    rdict = rest.get_with_cache(base_url + "/group/group/", payload,
+                                TIME_LEN_WEEK)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
     return rdict['objects'][0]
 
 
-def get_drafts (wg):
+def get_drafts(wg):
     payload = {
         "format": "json",
         "limit": 0,
@@ -125,20 +129,23 @@ def get_drafts (wg):
     }
     print("Getting IETF docs for {}".format(wg))
     # print("Getting IETF docs for {}".format(wg['acronym']))
-    rdict = rest.get_with_cache(base_url + "/doc/document/", payload, TIME_LEN_DAY)
+    rdict = rest.get_with_cache(base_url + "/doc/document/", payload,
+                                TIME_LEN_DAY)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
     docs = set()
     for doc in rdict['objects']:
         doc = json_dict(doc)
-        doc['time'] = datetime.datetime.strptime(doc['time'], "%Y-%m-%dT%H:%M:%S")
-        doc['expires'] = datetime.datetime.strptime(doc['expires'], "%Y-%m-%dT%H:%M:%S")
+        doc['time'] = datetime.datetime.strptime(doc['time'],
+                                                 "%Y-%m-%dT%H:%M:%S")
+        doc['expires'] = datetime.datetime.strptime(doc['expires'],
+                                                    "%Y-%m-%dT%H:%M:%S")
         doc['states'] = set(doc['states'])
         docs.add(doc)
     return docs
 
 
-def get_rfcs (wg, after):
+def get_rfcs(wg, after):
     payload = {
         "format": "json",
         "limit": 0,
@@ -148,12 +155,12 @@ def get_rfcs (wg, after):
         # "group__acronym__in": wg['acronym'],
         # "time__gt": after,
         "group__acronym__in": wg,
-
         "states__slug__in": "pub",
     }
     print("Getting IETF RFCs for {}".format(wg))
     # print("Getting IETF docs for {}".format(wg['acronym']))
-    rdict = rest.get_with_cache(base_url + "/doc/document/", payload, TIME_LEN_DAY)
+    rdict = rest.get_with_cache(base_url + "/doc/document/", payload,
+                                TIME_LEN_DAY)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
     docs = set()
@@ -164,38 +171,41 @@ def get_rfcs (wg, after):
             continue
         doc['name'] = "RFC" + doc['rfc']
         # print("Got {}".format(doc['name']))
-        doc['time'] = datetime.datetime.strptime(doc['time'], "%Y-%m-%dT%H:%M:%S")
+        doc['time'] = datetime.datetime.strptime(doc['time'],
+                                                 "%Y-%m-%dT%H:%M:%S")
         doc['states'] = set(doc['states'])
         docs.add(doc)
     return docs
 
 
-def get_meetings ():
+def get_meetings():
     payload = {
         "format": "json",
         "limit": 0,
         "type": "ietf",
     }
-    rdict = rest.get_with_cache(base_url + "/meeting/meeting/", payload, TIME_LEN_WEEK)
+    rdict = rest.get_with_cache(base_url + "/meeting/meeting/", payload,
+                                TIME_LEN_WEEK)
     # we don't handle continuation here.
     assert rdict['meta']['next'] is None
 
     meeting_info = {}
     for meeting in rdict['objects']:
         meeting = meeting_info[meeting['number']] = dict(meeting)
-        meeting['date'] = datetime.datetime.strptime(meeting['date'], "%Y-%m-%d")
+        meeting['date'] = datetime.datetime.strptime(meeting['date'],
+                                                     "%Y-%m-%d")
 
     return meeting_info
 
 
-def find_last_meeting (meeting_info):
+def find_last_meeting(meeting_info):
     now = datetime.datetime.now()
     for key in reversed(sorted(meeting_info.keys())):
         if meeting_info[key]['date'] < now:
             return meeting_info[key]
 
 
-def get_shepherd (x):
+def get_shepherd(x):
     "Get the shepherd "
     ad = [e for e in x if "class" in e.attrs and e.attrs["class"][0] == "ad"]
     if not ad:
@@ -211,7 +221,7 @@ def get_shepherd (x):
     return ""
 
 
-def print_headline (args, headline, level):
+def print_headline(args, headline, level):
     hline = ""
     if args.org_mode:
         hline = "\n" + "*" * (level + ORG_LEVEL_OFF)
@@ -221,7 +231,7 @@ def print_headline (args, headline, level):
     print(hline)
 
 
-def states_to_string (states):
+def states_to_string(states):
     s = ""
     for state in states:
         if s:
@@ -231,7 +241,7 @@ def states_to_string (states):
     return s
 
 
-def print_doc_summary (args, doc, longest, longest_shep):
+def print_doc_summary(args, doc, longest, longest_shep):
     name = doc['name']
     shep = doc['shepherd']
     if args.org_mode or not (args.include_date or args.include_status):
@@ -256,15 +266,18 @@ def print_doc_summary (args, doc, longest, longest_shep):
                 fmt += " " * (longest_shep - len(shep))
             fmt += " {status}"
 
-    fmt = fmt.format(date=doc['time'], title=doc['title'], name=name,
-                     status=states_to_string(doc['states']),
-                     shepherd=shep)
+    fmt = fmt.format(
+        date=doc['time'],
+        title=doc['title'],
+        name=name,
+        status=states_to_string(doc['states']),
+        shepherd=shep)
     print(fmt)
 
 
 def get_new_and_updated(docs, lastmeeting):
-    existing = [ x for x in docs if x['time'] < lastmeeting ]
-    new_or_updated = [ x for x in docs if x['time'] >= lastmeeting ]
+    existing = [x for x in docs if x['time'] < lastmeeting]
+    new_or_updated = [x for x in docs if x['time'] >= lastmeeting]
 
     new = set()
     updated = set()
@@ -274,16 +287,14 @@ def get_new_and_updated(docs, lastmeeting):
         else:
             updated.add(doc)
             url = "https://datatracker.ietf.org/api/v1/doc/dochistory/"
-            payload = {
-                "name": doc['name'],
-                "rev": "00"
-            }
+            payload = {"name": doc['name'], "rev": "00"}
 
             print("Getting history for {}".format(doc['name']))
             try:
                 rdict = rest.get_with_cache(url, payload, TIME_LEN_WEEK)
                 zerodoc = rdict['objects'][0]
-                pub_time = datetime.datetime.strptime(zerodoc['time'], "%Y-%m-%dT%H:%M:%S")
+                pub_time = datetime.datetime.strptime(zerodoc['time'],
+                                                      "%Y-%m-%dT%H:%M:%S")
                 if pub_time >= lastmeeting:
                     new.add(doc)
                 else:
@@ -295,23 +306,55 @@ def get_new_and_updated(docs, lastmeeting):
     return new, updated, existing
 
 
-def main (*margs):
+def main(*margs):
     # from _version import __version__
     __version__ = pkg_resources.get_distribution('wgstatus').version
 
     parser = argparse.ArgumentParser("wgstatus")
     # Should be non-optional arg.
-    parser.add_argument('-l', '--last-meeting', help='Meeting number or Date (YYYY-MM-DD) of last IETF')
-    parser.add_argument('-e', '--exclude-existing', action="store_true", help='Exclude unchanged docs in summary')
-    parser.add_argument('-f', '--flush', action="store_true", help='Flush the caches')
-    parser.add_argument('-d', '--include-date', action="store_true", help='Include date in summary')
-    parser.add_argument('-r', '--include-replaced', action="store_true", help='Include replaced drafts')
-    parser.add_argument('-S', '--include-shepherd', action="store_true", help='Include shepherd in summary')
-    parser.add_argument('-s', '--include-status', action="store_true", help='Include status in summary')
-    parser.add_argument('-o', '--org-mode', action="store_true", help='Output org mode friendly slides')
-    parser.add_argument('--print-states', action="store_true", help='Output document states')
-    parser.add_argument('-v', '--version', action='version',
-                        version='%(prog)s {version}'.format(version=__version__))
+    parser.add_argument(
+        '-l',
+        '--last-meeting',
+        help='Meeting number or Date (YYYY-MM-DD) of last IETF')
+    parser.add_argument(
+        '-e',
+        '--exclude-existing',
+        action="store_true",
+        help='Exclude unchanged docs in summary')
+    parser.add_argument(
+        '-f', '--flush', action="store_true", help='Flush the caches')
+    parser.add_argument(
+        '-d',
+        '--include-date',
+        action="store_true",
+        help='Include date in summary')
+    parser.add_argument(
+        '-r',
+        '--include-replaced',
+        action="store_true",
+        help='Include replaced drafts')
+    parser.add_argument(
+        '-S',
+        '--include-shepherd',
+        action="store_true",
+        help='Include shepherd in summary')
+    parser.add_argument(
+        '-s',
+        '--include-status',
+        action="store_true",
+        help='Include status in summary')
+    parser.add_argument(
+        '-o',
+        '--org-mode',
+        action="store_true",
+        help='Output org mode friendly slides')
+    parser.add_argument(
+        '--print-states', action="store_true", help='Output document states')
+    parser.add_argument(
+        '-v',
+        '--version',
+        action='version',
+        version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('--use', help=argparse.SUPPRESS)
 
     parser.add_argument('wgname', nargs='?', help='Working group name')
@@ -327,20 +370,17 @@ def main (*margs):
     if args.print_states:
         print("RFC States")
         for state in rfc_states:
-            print("{}: {}: {}".format(state,
-                                      states_by_uri[state]["slug"],
+            print("{}: {}: {}".format(state, states_by_uri[state]["slug"],
                                       states_by_uri[state]["name"]))
 
         print("IESG States")
         for state in iesg_states:
-            print("{}: {}: {}".format(state,
-                                      states_by_uri[state]["slug"],
+            print("{}: {}: {}".format(state, states_by_uri[state]["slug"],
                                       states_by_uri[state]["name"]))
 
         print("WG States")
         for state in wg_states:
-            print("{}: {}: {}".format(state,
-                                      states_by_uri[state]["slug"],
+            print("{}: {}: {}".format(state, states_by_uri[state]["slug"],
                                       states_by_uri[state]["name"]))
         sys.exit(0)
 
@@ -350,7 +390,8 @@ def main (*margs):
         lastmeeting = meeting['date']
     else:
         try:
-            lastmeeting = datetime.datetime.strptime(args.last_meeting, "%Y-%m-%d")
+            lastmeeting = datetime.datetime.strptime(args.last_meeting,
+                                                     "%Y-%m-%d")
             meeting = None
         except Exception:
             meeting_info = get_meetings()
@@ -369,13 +410,12 @@ def main (*margs):
             if not shep_email_uri:
                 draft['shepherd'] = ""
                 continue
-            rdict = rest.get_with_cache("https://datatracker.ietf.org" + shep_email_uri,
-                                        None,
-                                        TIME_LEN_WEEK)
+            rdict = rest.get_with_cache(
+                "https://datatracker.ietf.org" + shep_email_uri, None,
+                TIME_LEN_WEEK)
             person = rdict['person']
-            rdict = rest.get_with_cache("https://datatracker.ietf.org/" + person,
-                                        None,
-                                        TIME_LEN_WEEK)
+            rdict = rest.get_with_cache(
+                "https://datatracker.ietf.org/" + person, None, TIME_LEN_WEEK)
             draft['shepherd'] = rdict['name']
 
     docs = set(drafts)
@@ -384,38 +424,43 @@ def main (*margs):
     # wgdoc_uri = states_by_name["WG Document"]['resource_uri']
     replaced_uri = states_by_name["Replaced"]['resource_uri']
 
-    rfcs = set([ x for x in docs if rfc_uri in x['states'] ])
+    rfcs = set([x for x in docs if rfc_uri in x['states']])
     docs -= rfcs
-    iesgs = set([ x for x in docs if (x['states'] & (rfc_states | iesg_states)) ])
+    iesgs = set(
+        [x for x in docs if (x['states'] & (rfc_states | iesg_states))])
     docs -= iesgs
-    wgdocs = set([ x for x in docs if (x['states'] & real_wg_states) ])
+    wgdocs = set([x for x in docs if (x['states'] & real_wg_states)])
     docs -= wgdocs
     idocs = docs
 
     if not args.include_replaced:
-        idocs = set([ x for x in docs if replaced_uri not in x['states'] ])
+        idocs = set([x for x in docs if replaced_uri not in x['states']])
 
     # It seems we don't get RFCs from the normal query due to expired
     rfcs = get_rfcs(args.wgname, str(lastmeeting.date()))
-    rfcs = set([ x for x in rfcs if rfc_uri in x['states'] ])
-    new_rfcs = [ x for x in rfcs if x['time'] >= lastmeeting ]
+    rfcs = set([x for x in rfcs if rfc_uri in x['states']])
+    new_rfcs = [x for x in rfcs if x['time'] >= lastmeeting]
 
-    new_wgstatus, updated_wgstatus, existing_wgstatus = get_new_and_updated(wgdocs, lastmeeting)
-    new_iesgs, updated_iesgs, existing_iesgs = get_new_and_updated(iesgs, lastmeeting)
+    new_wgstatus, updated_wgstatus, existing_wgstatus = get_new_and_updated(
+        wgdocs, lastmeeting)
+    new_iesgs, updated_iesgs, existing_iesgs = get_new_and_updated(
+        iesgs, lastmeeting)
     updated_iesgs = new_iesgs | updated_iesgs
-    new_ind, updated_ind, existing_ind = get_new_and_updated(idocs, lastmeeting)
+    new_ind, updated_ind, existing_ind = get_new_and_updated(
+        idocs, lastmeeting)
 
     if meeting:
-        print_headline(args, "Document Status Since IETF-{} in {} ({})".format(
-            meeting['number'], meeting['city'], lastmeeting.date()), 1)
+        print_headline(
+            args, "Document Status Since IETF-{} in {} ({})".format(
+                meeting['number'], meeting['city'], lastmeeting.date()), 1)
     else:
         print_headline(args, "Document Status Since {}".format(lastmeeting), 1)
 
-    def get_longest (docs):
-        longest = reduce(max, [ safelen(x['name']) for x in docs ], 0)
+    def get_longest(docs):
+        longest = reduce(max, [safelen(x['name']) for x in docs], 0)
         if not args.include_shepherd:
             return longest, 0
-        longest_shep = reduce(max, [ safelen(x['shepherd']) for x in docs ], 0)
+        longest_shep = reduce(max, [safelen(x['shepherd']) for x in docs], 0)
         return longest, longest_shep
 
     for doc_set, desc in [(new_rfcs, "New RFCs"),

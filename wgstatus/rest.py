@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-#
+# -*- coding: utf-8 eval: (yapf-mode 1) -*-
 # March 19 2016,  <chopps@gmail.com>
 #
 # Copyright (c) 2016 by Christian E. Hopps.
@@ -32,36 +32,38 @@ CACHEDIR = "~/.cache/wgstatus"
 #requests_cache.install_cache(cache_name='wgstatus', expire_after=3600)
 
 if sys.version_info[0] >= 3:
-    def encodeurl (url):
+
+    def encodeurl(url):
         return base64.urlsafe_b64encode(bytes(url, "utf-8"))
 else:
-    def encodeurl (url):
+
+    def encodeurl(url):
         return base64.urlsafe_b64encode(url)
 
 
-def flush_caches ():
+def flush_caches():
     os.system("rm -rf {}".format(CACHEDIR))
 
 
-def get_cache_dir ():
+def get_cache_dir():
     cachedir = os.path.expanduser(CACHEDIR)
     if not os.path.exists(cachedir):
         os.makedirs(cachedir)
     return cachedir
 
 
-def url2pathname (url):
+def url2pathname(url):
     cachedir = get_cache_dir()
     fname = encodeurl(url)
     fname = fname.decode("utf-8")
     return os.path.join(cachedir, fname)
 
 
-def pathname2url (pname):
+def pathname2url(pname):
     return base64.urlsafe_b64decode(os.path.basename(pname))
 
 
-def file_age_in_seconds (pname):
+def file_age_in_seconds(pname):
     if not os.path.exists(pname):
         return sys.maxsize
     mtime = os.path.getmtime(pname)
