@@ -1,16 +1,27 @@
 language: python
 
-env:
-  - TOXENV=py27
-  - TOXENV=py33
-  - TOXENV=py34
-  - TOXENV=pypy
-  - TOXENV=pypy3
+python:
+- '2.7'
+- '3.6'
 
 install:
-  - pip install tox
-  - pip install coveralls
-  - pip install nose
+- pip install coveralls tox-travis pytest
 
 script:
-  - tox -e $TOXENV
+- coverage run -m py.test
+
+deploy:
+  provider: pypi
+  user: choppsv1
+  password:
+    secure: r1ec5rlBBJTya0bBEFB3A9ENDl4aNMDjQwaeCRBZUJFdSDe5ewm/80LeQt6B61iD3EOrq3FZ08kQVhDJLcfNMaaZSmBUY+Dw+/7J4EwWxTj98Uu6Q4umD+cvFqAYbe8H85ote+RrMkaAfDYXyhbNU7xUHJLhtYBbhC3CGNRB8sZDmDm6T7nhtyJPsg+PccShsqn9FgIe2ccpnOh0HJwYe3JqpHh2gpdz2vGTYMaWCQBZnDuV5UrblEuqhYl4iJnLOvorWFwZ9JdwbtJEDfaMxcoZKD1MfmGc3Qlbov0GOIWOo0op+pDyEtOJy1VFhk5gkbriM+0rNVGVL3y1StPxtq+v/fXPLtg4tGJNSld9gd2XFxDEm/MupFZNv8Q1LWmjle9YoVX8JJpsr9HPuUitbT4YBWU8NL3JXVL7p0p8/CcTW8tZu16E1PUjPQdE0J1E+hvwGveuzo9uQJLGDz7a3zPbp5CU/Xxc3cYJNXHsio6wkqiZEX19BTVm8LXLOOtks5vm7qOJpspFk0azKyZNYvGEYgsLTHmkaLspe49VwUbVciPHeXTmqi/sTUvdory+uJHyeX0X4mDttcrhLM0T4nUBSd0jIekHBiNLFz3WQJxdfpad1sCbq01jB1so7ozNEKNO0pisU4fvEsl2o8cxNLZEBvTJlav81eRxwR+4YnE=
+  on:
+    branch: master
+    tags: true
+    condition: $TRAVIS_PYTHON_VERSION = "2.7"
+  distributions: sdist bdist_wheel
+  edge:
+    branch: v1.8.45
+env:
+  global:
+    secure: r1ec5rlBBJTya0bBEFB3A9ENDl4aNMDjQwaeCRBZUJFdSDe5ewm/80LeQt6B61iD3EOrq3FZ08kQVhDJLcfNMaaZSmBUY+Dw+/7J4EwWxTj98Uu6Q4umD+cvFqAYbe8H85ote+RrMkaAfDYXyhbNU7xUHJLhtYBbhC3CGNRB8sZDmDm6T7nhtyJPsg+PccShsqn9FgIe2ccpnOh0HJwYe3JqpHh2gpdz2vGTYMaWCQBZnDuV5UrblEuqhYl4iJnLOvorWFwZ9JdwbtJEDfaMxcoZKD1MfmGc3Qlbov0GOIWOo0op+pDyEtOJy1VFhk5gkbriM+0rNVGVL3y1StPxtq+v/fXPLtg4tGJNSld9gd2XFxDEm/MupFZNv8Q1LWmjle9YoVX8JJpsr9HPuUitbT4YBWU8NL3JXVL7p0p8/CcTW8tZu16E1PUjPQdE0J1E+hvwGveuzo9uQJLGDz7a3zPbp5CU/Xxc3cYJNXHsio6wkqiZEX19BTVm8LXLOOtks5vm7qOJpspFk0azKyZNYvGEYgsLTHmkaLspe49VwUbVciPHeXTmqi/sTUvdory+uJHyeX0X4mDttcrhLM0T4nUBSd0jIekHBiNLFz3WQJxdfpad1sCbq01jB1so7ozNEKNO0pisU4fvEsl2o8cxNLZEBvTJlav81eRxwR+4YnE=
