@@ -23,11 +23,13 @@ from functools import reduce
 import argparse
 import datetime
 import json
+import logging
 import os
 import pdb
 import pkg_resources
 import pprint
 import re
+import requests
 import subprocess
 import sys
 
@@ -62,6 +64,28 @@ def safelen(v):
     return len(v)
 
 
+def download_drafts(drafts):
+    if os.path.exists("downloaded-drafts"):
+        if not os.path.exists("downloaded-drafts.old"):
+            os.system("mkdir downloaded-drafts.old")
+        os.system("mv downloaded-drafts/* downloaded-drafts.old")
+    else:
+        os.system("mkdir -p downloaded-drafts")
+    for draft in drafts:
+        #https://tools.ietf.org/html/draft-ietf-isis-sr-yang-06
+        #https://www.ietf.org/id/draft-ietf-isis-sr-yang-06.txt
+        for e in ["txt", "html"]:
+            filename = "{}-{}.{}".format(draft["name"], draft["rev"], e)
+            url = "https://tools.ietf.org/id/" + filename
+            response = requests.get(url, {})
+            if not response.ok and e == "html":
+                url = "https://tools.ietf.org/html/" + filename[:-5]
+                response = requests.get(url, {})
+            f = open(os.path.join("downloaded-drafts", filename), "w+")
+            f.write(response.text)
+            f.close()
+
+
 # From Fred Bakers get_states(slug, tag):
 def get_states():
     payload = {
@@ -86,7 +110,15 @@ def get_states():
 
             # print("slug: {}: uri: {} type: {} state: {}".format(state['slug'], uri, state['type'], state['name']))
             # pprint.pprint(state)
-            if state['type'] == "/api/v1/doc/statetype/draft-stream-ietf/":
+            if state['slug'] == "pub":
+                rfc_states.add(uri)
+            elif state['slug'] == "iesg":
+                iesg_states.add(uri)
+            elif state['slug'] == "dead":
+                pass
+            elif state['slug'] == "idexists":
+                pass
+            elif state['type'] == "/api/v1/doc/statetype/draft-stream-ietf/":
                 wg_states.add(uri)
             elif state['type'] == "/api/v1/doc/statetype/draft-iesg/":
                 iesg_states.add(uri)
@@ -116,7 +148,7 @@ def get_wg(wgname):
     return rdict['objects'][0]
 
 
-def get_drafts(wg):
+def get_draft_data(wg):
     payload = {
         "format": "json",
         "limit": 0,
@@ -145,7 +177,7 @@ def get_drafts(wg):
     return docs
 
 
-def get_rfcs(wg, after):
+def get_rfc_data(wg, after):
     payload = {
         "format": "json",
         "limit": 0,
@@ -191,7 +223,7 @@ def get_meetings():
 
     meeting_info = {}
     for meeting in rdict['objects']:
-        meeting = meeting_info[meeting['number']] = dict(meeting)
+        meeting = meeting_info[int(meeting['number'])] = dict(meeting)
         meeting['date'] = datetime.datetime.strptime(meeting['date'],
                                                      "%Y-%m-%d")
 
@@ -312,6 +344,9 @@ def main(*margs):
 
     parser = argparse.ArgumentParser("wgstatus")
     # Should be non-optional arg.
+    parser.add_argument('--debug', action="store_true", help='Enable debug')
+    parser.add_argument(
+        '--download-drafts', action="store_true", help='Download all drafts')
     parser.add_argument(
         '-l',
         '--last-meeting',
@@ -360,6 +395,11 @@ def main(*margs):
     parser.add_argument('wgname', nargs='?', help='Working group name')
     args = parser.parse_args(*margs)
 
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
     if args.flush:
         rest.flush_caches()
 
@@ -395,14 +435,14 @@ def main(*margs):
             meeting = None
         except Exception:
             meeting_info = get_meetings()
-            meeting = meeting_info[args.last_meeting]
+            meeting = meeting_info[int(args.last_meeting)]
             lastmeeting = meeting['date']
 
     if not args.wgname:
         print("Need to specify a WG name (use -h for help)")
         sys.exit(1)
 
-    drafts = get_drafts(args.wgname)
+    drafts = get_draft_data(args.wgname)
 
     if args.include_shepherd:
         for draft in drafts:
@@ -437,7 +477,7 @@ def main(*margs):
         idocs = set([x for x in docs if replaced_uri not in x['states']])
 
     # It seems we don't get RFCs from the normal query due to expired
-    rfcs = get_rfcs(args.wgname, str(lastmeeting.date()))
+    rfcs = get_rfc_data(args.wgname, str(lastmeeting.date()))
     rfcs = set([x for x in rfcs if rfc_uri in x['states']])
     new_rfcs = [x for x in rfcs if x['time'] >= lastmeeting]
 
@@ -448,6 +488,9 @@ def main(*margs):
     updated_iesgs = new_iesgs | updated_iesgs
     new_ind, updated_ind, existing_ind = get_new_and_updated(
         idocs, lastmeeting)
+
+    if args.download_drafts:
+        download_drafts(wgdocs | idocs)
 
     if meeting:
         print_headline(

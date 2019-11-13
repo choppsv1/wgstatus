@@ -12,6 +12,7 @@ from __future__ import absolute_import, division, unicode_literals, print_functi
 import base64
 import datetime
 import json
+import logging
 import os
 import sys
 import requests
@@ -86,7 +87,9 @@ def get_with_cache(url, payload, cache_seconds):
             return json.load(fp)
 
     response = requests.get(url, payload)
+    logging.debug("Response: GET: {}:\n{}".format(url, response.text))
     data = response.json()
+    logging.debug("Response: GET: {}:\n{}".format(url, data))
 
     if data:
         with open(pname, "w") as fp:
